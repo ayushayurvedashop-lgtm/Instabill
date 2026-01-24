@@ -1,0 +1,316 @@
+/* Global Resets */
+html,
+body {
+  background-color: #000000;
+  /* Prevent white bars on mobile overscroll */
+  overscroll-behavior: none;
+  /* Prevent bounce effect */
+  height: 100%;
+  margin: 0;
+  padding: 0;
+}
+
+/* Custom Scrollbar Styles */
+.custom-scrollbar::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 10px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+/* Firefox scrollbar */
+.custom-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: #cbd5e1 transparent;
+}
+
+/* Hide scrollbar for Chrome, Safari and Opera */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+/* Hide scrollbar for IE, Edge and Firefox */
+.no-scrollbar {
+  -ms-overflow-style: none;
+  /* IE and Edge */
+  scrollbar-width: none;
+  /* Firefox */
+}
+
+/* Print Styles - Improved for both iframe and native mobile printing */
+@media print {
+  @page {
+    size: A4;
+    margin: 0;
+  }
+
+  /* Reset all styles by default for print */
+  body {
+    background: white;
+  }
+
+  /* Hide everything by default via visibility:hidden on body's children 
+     Exceptions will be managed below 
+  */
+  body * {
+    visibility: hidden;
+  }
+
+  /* 
+     But we actually want to hide the "app UI" and show ONLY the bill.
+     The standard technique:
+     1. Hide everything.
+     2. Position the printable content absolute at top left.
+     3. Make it visible.
+  /* Ensure body and html can scroll if content overflows */
+  html,
+  body {
+    height: auto !important;
+    overflow: visible !important;
+  }
+
+  .no-print {
+    display: none !important;
+  }
+
+  /* 
+     Nuclear layout reset for the modal structure during print.
+     We need to break the printable content out of the fixed/flex/overflow-hidden containers.
+  */
+
+  /* 1. Make the main modal container flow naturally */
+  #invoice-modal-print-container {
+    position: absolute !important;
+    inset: auto !important;
+    top: 0 !important;
+    left: 0 !important;
+    width: 100% !important;
+    height: auto !important;
+    overflow: visible !important;
+    display: block !important;
+    background: white !important;
+    z-index: 9999;
+  }
+
+  /* 2. Reset the modal card (remove fixed heights/overflows) */
+  #invoice-modal-card {
+    position: static !important;
+    width: 100% !important;
+    height: auto !important;
+    max-height: none !important;
+    max-width: none !important;
+    overflow: visible !important;
+    box-shadow: none !important;
+    display: block !important;
+    border-radius: 0 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  /* 3. Reset the scrollable preview area */
+  #invoice-modal-preview-area {
+    overflow: visible !important;
+    height: auto !important;
+    display: block !important;
+    padding: 0 !important;
+    background: white !important;
+  }
+
+  /* 4. Target the printable content */
+  /* We no longer need position:absolute because the parents are now flow containers */
+  .printable-content,
+  .printable-content * {
+    visibility: visible !important;
+  }
+
+  .printable-content {
+    position: static !important;
+    /* Changed from absolute to static */
+    width: 100% !important;
+    max-width: 210mm !important;
+    /* Restrict width for mobile margins */
+    height: auto !important;
+    margin: 0 auto !important;
+    /* Center it */
+    padding: 0 !important;
+    background: white;
+  }
+
+  /* Reset the scaling wrapper */
+  .print-scale-wrapper {
+    transform: none !important;
+    margin-bottom: 0 !important;
+    position: static !important;
+    width: 100% !important;
+    height: auto !important;
+    visibility: visible !important;
+    overflow: visible !important;
+  }
+
+  /* Ensure pages break correctly */
+  .page {
+    page-break-after: always;
+    break-after: page;
+    width: 100% !important;
+    max-width: 210mm !important;
+    height: auto !important;
+    min-height: 297mm !important;
+    /* Force A4 height per page */
+    overflow: visible !important;
+    margin: 0 auto !important;
+    box-shadow: none !important;
+    visibility: visible !important;
+  }
+
+  .page:last-child {
+    page-break-after: auto;
+    break-after: auto;
+  }
+
+  /* Hide scrollbars in print */
+  ::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+/* Custom Animation Easings */
+.ease-out-expo {
+  transition-timing-function: cubic-bezier(0.19, 1, 0.22, 1);
+}
+
+.ease-mountain {
+  transition-timing-function: cubic-bezier(0.42, 0, 0.58, 1);
+}
+
+/* Hide scrollbar for Chrome, Safari and Opera */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+/* Hide scrollbar for IE, Edge and Firefox */
+.no-scrollbar {
+  -ms-overflow-style: none;
+  /* IE and Edge */
+  scrollbar-width: none;
+  /* Firefox */
+}
+
+/* Modern Mobile Menu Styles - Flat & Highlighted */
+:root {
+  --component-inactive-color: #9ca3af;
+  --component-active-color-default: #132c25;
+}
+
+.menu {
+  display: flex;
+  justify-content: space-around;
+  align-items: center;
+  width: 100%;
+  height: 100%;
+  position: relative;
+  gap: 8px;
+  /* Add gap for spacing between highlighted boxes */
+}
+
+.menu__item {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 48px;
+  /* Fixed height for the touch target */
+  max-width: 64px;
+  /* Limit width of highlight box */
+  border: none;
+  background: none;
+  cursor: pointer;
+  z-index: 1;
+  color: var(--component-inactive-color);
+  -webkit-tap-highlight-color: transparent;
+  padding: 0;
+  border-radius: 12px;
+  /* Rounded corners for highlight */
+  transition: all 0.2s ease-out;
+}
+
+.menu__item.active {
+  color: var(--component-active-color);
+  background-color: rgba(203, 243, 130, 0.3);
+  /* Green box with low opacity (primary color) */
+}
+
+.menu__icon {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  /* Removed transform transition */
+}
+
+/* Create Bill (Center Item) - Green Circle Highlight */
+.menu__item--center .menu__icon {
+  width: 48px;
+  height: 48px;
+  background-color: #cbf382;
+  /* Primary Green */
+  border-radius: 50%;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+  color: #132c25;
+  /* Dark Text Color */
+  margin-top: 0;
+  border: none;
+  transition: all 0.2s ease-out;
+}
+
+.menu__item--center.active .menu__icon {
+  transform: none;
+  background-color: #bce870;
+  /* Primary Hover Green */
+  box-shadow: 0 4px 12px rgba(203, 243, 130, 0.4);
+}
+
+/* Ensure centering for the icon within the circle */
+.menu__item--center {
+  background-color: transparent !important;
+  /* Remove box highlight for center item */
+}
+
+/* Remove bounce if preferred, or keep it subtle */
+.menu__item.active .icon {
+  animation: iconBounce 0.4s ease-in-out;
+}
+
+/* Hide text labels completely */
+.menu__text {
+  display: none;
+}
+
+@keyframes iconBounce {
+
+  0%,
+  100% {
+    transform: scale(1);
+  }
+
+  50% {
+    transform: scale(1.15);
+  }
+}
+
+@keyframes shimmer {
+  100% {
+    transform: translateX(100%);
+  }
+}

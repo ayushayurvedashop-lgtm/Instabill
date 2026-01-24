@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>Ayush Ayurveda - Wellness Management</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'sans-serif'],
+          },
+          colors: {
+            lime: {
+              300: '#bef264',
+              400: '#a3e635',
+              500: '#84cc16',
+            },
+            // Custom palette based on reference
+            primary: '#cbf382', // The bright lime accent
+            'primary-hover': '#bce870',
+            dark: '#132c25',    // The dark forest green text/bg
+            'dark-light': '#1f423a',
+            subtle: '#9ca3af',
+            bg: '#f3f5f2',      // The main light gray/green background
+            surface: '#ffffff',
+          },
+          borderRadius: {
+            '3xl': '1.5rem',
+          },
+          keyframes: {
+            fadeIn: {
+              '0%': { opacity: '0' },
+              '100%': { opacity: '1' },
+            },
+            slideUp: {
+              '0%': { opacity: '0', transform: 'translateY(20px)' },
+              '100%': { opacity: '1', transform: 'translateY(0)' },
+            },
+            slideDown: {
+              '0%': { opacity: '0', transform: 'translateY(-20px)' },
+              '100%': { opacity: '1', transform: 'translateY(0)' },
+            },
+            scaleIn: {
+              '0%': { opacity: '0', transform: 'scale(0.95)' },
+              '100%': { opacity: '1', transform: 'scale(1)' },
+            },
+            modalIn: {
+              '0%': { opacity: '0', transform: 'scale(0.95)' },
+              '100%': { opacity: '1', transform: 'scale(1)' },
+            },
+            slideInRight: {
+              '0%': { opacity: '0', transform: 'translateX(20px)' },
+              '100%': { opacity: '1', transform: 'translateX(0)' },
+            },
+            bounceSubtle: {
+              '0%, 100%': { transform: 'translateY(-3px)' },
+              '50%': { transform: 'translateY(3px)' },
+            }
+          },
+          animation: {
+            'fade-in': 'fadeIn 0.5s ease-out forwards',
+            'slide-up': 'slideUp 0.6s ease-out forwards',
+            'slide-down': 'slideDown 0.6s ease-out forwards',
+            'scale-in': 'scaleIn 0.4s ease-out forwards',
+            'modal-in': 'modalIn 0.2s ease-out forwards',
+            'slide-in-right': 'slideInRight 0.5s ease-out forwards',
+            'bounce-subtle': 'bounceSubtle 2s infinite ease-in-out',
+          }
+        }
+      }
+    }
+  </script>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap"
+    rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <script type="importmap">
+{
+  "imports": {
+    "lucide-react": "https://aistudiocdn.com/lucide-react@^0.555.0",
+    "recharts": "https://aistudiocdn.com/recharts@^3.5.1",
+    "@google/genai": "https://aistudiocdn.com/@google/genai@^1.30.0",
+    "react-dom/": "https://aistudiocdn.com/react-dom@^19.2.0/",
+    "react/": "https://aistudiocdn.com/react@^19.2.0/",
+    "react": "https://aistudiocdn.com/react@^19.2.0",
+    "firebase/app": "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js",
+    "firebase/firestore": "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js",
+    "firebase/auth": "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js",
+    "firebase/": "https://aistudiocdn.com/firebase@^12.6.0/"
+  }
+}
+</script>
+  <link rel="stylesheet" href="/index.css">
+
+  <meta name="theme-color" content="#cbf382">
+  <link rel="apple-touch-icon" href="/logo.png">
+
+</head>
+
+<body class="bg-black text-dark font-sans antialiased selection:bg-primary selection:text-dark">
+  <div id="root"></div>
+  <script type="module" src="/index.tsx"></script>
+</body>
+
+</html>

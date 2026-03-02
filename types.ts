@@ -20,6 +20,7 @@ export interface Product {
   dp: number;  // Distributor Price
   sp: number;  // Sales Point
   stock: number;
+  imageUrl?: string; // Optional product image URL
 }
 
 export interface HandoverEvent {
@@ -68,8 +69,14 @@ export interface Bill {
   paymentMethod: PaymentMethod;
   cashAmount?: number; // Amount paid in cash
   onlineAmount?: number; // Amount paid online
-  totalAmount: number;
+  subTotalAmount?: number; // Amount before discount
+  totalAmount: number; // Final amount
   totalSp: number;
+  discountType?: 'percentage' | 'amount';
+  discountValue?: number;
+  discountAmount?: number;
+  showSpOnBill?: boolean;
+  sendWhatsapp?: boolean;
   billingType: BillingType;
   snapshotUrl?: string; // Kept for backward compatibility
   snapshotData?: string; // Base64 string for temporary storage
@@ -79,6 +86,7 @@ export interface Bill {
   spStatus?: 'Pending' | 'Completed'; // Explicit status for SP Manager
   spHistory?: { date: string; amount: number; total: number }[]; // History of updates
   whatsappStatus?: 'Sent' | 'Failed'; // Status of WhatsApp notification
+  firestoreId?: string; // Auto-generated ID from Firestore
 }
 
 export interface Customer {
@@ -115,6 +123,7 @@ export interface AppSettings {
   shopName: string;
   shopAddress: string;
   defaultBillingMode: BillingType;
+  whatsappEnabled?: boolean; // Toggle to enable/disable all WhatsApp notifications
 }
 
 // Cash deductions/withdrawals from the shop
@@ -125,4 +134,26 @@ export interface CashDeduction {
   date: string; // YYYY-MM-DD format
   time: string;
   note?: string;
+}
+
+// --- Multi-tenant SaaS Types ---
+export interface ShopProfile {
+  id: string; // Firestore doc ID (same as shopId)
+  shopName: string;
+  address: string;
+  phone: string;
+  ownerUid: string; // Firebase Auth UID
+  createdAt: string;
+  subscriptionStatus: 'active' | 'trial' | 'expired' | 'suspended';
+  planId?: string; // 'basic', 'pro', 'enterprise'
+  currentPeriodEnd?: string; // ISO date string
+  subscriptionStart?: string; // ISO date string
+  subscriptionEnd?: string; // ISO date string
+  planDurationMonths?: number; // For enterprise custom duration
+}
+
+export interface PlanConfig {
+  basicPrice: number;          // e.g. 499 (1 month)
+  proPrice: number;            // e.g. 3999 (12 months)
+  enterpriseMonthlyPrice: number; // e.g. 399 per month
 }

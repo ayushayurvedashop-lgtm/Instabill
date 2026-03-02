@@ -52,38 +52,32 @@ const ProductPending: React.FC<ProductPendingProps> = ({ bills, searchTerm }) =>
                     <div
                         key={bill.id}
                         onClick={() => setSelectedBillId(bill.id)}
-                        className="group bg-white hover:bg-gray-50 transition-colors cursor-pointer border-b md:border-b-0 md:rounded-none"
+                        className="group bg-white hover:bg-gray-50 transition-all cursor-pointer mb-3 md:mb-0 rounded-2xl md:rounded-none shadow-sm md:shadow-none border border-gray-100 md:border-none"
                     >
                         {/* Mobile View Card */}
-                        <div className="md:hidden p-4 space-y-3 relative overflow-hidden">
-                            {/* Progress indicator strip */}
-                            <div className="absolute left-0 top-0 bottom-0 w-1 bg-gray-100">
-                                <div
-                                    className="absolute top-0 left-0 w-full transition-all duration-1000 ease-out bg-orange-500"
-                                    style={{ height: `${percentage}%` }}
-                                />
-                            </div>
-
-                            <div className="flex justify-between items-start pl-2">
-                                <div>
-                                    <h3 className="font-bold text-gray-900">{bill.customerName}</h3>
-                                    <p className="text-xs text-gray-500 font-medium mt-0.5">#{bill.id} • {bill.date}</p>
+                        <div className="md:hidden p-4 relative overflow-hidden">
+                            <div className="flex justify-between items-start mb-4">
+                                <div className="pr-2">
+                                    <h3 className="text-[15px] font-bold text-gray-900 leading-tight">{bill.customerName}</h3>
+                                    <p className="text-xs text-gray-500 font-medium mt-1.5">##{bill.id} • {bill.date}</p>
                                 </div>
-                                <div className="text-right">
-                                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-orange-50 text-orange-600 text-xs font-bold border border-orange-100">
-                                        <Clock size={12} strokeWidth={2.5} />
+                                <div className="text-right shrink-0 mt-0.5">
+                                    <span className="inline-flex flex-row items-center gap-1 px-2.5 py-1 rounded-full bg-orange-50 text-orange-500 text-[11px] font-bold border border-orange-100/50">
+                                        <Clock size={11} strokeWidth={2.5} />
                                         {pendingQty} Pending
                                     </span>
                                 </div>
                             </div>
 
                             {/* Progress Bar (Mobile) */}
-                            <div className="space-y-1.5 pl-2">
-                                <div className="flex justify-between text-xs font-medium text-gray-500">
-                                    <span>Progress</span>
-                                    <span>{Math.round(percentage)}% ({completedQty}/{totalQty})</span>
+                            <div className="space-y-1.5">
+                                <div className="flex justify-between text-[13px] font-semibold">
+                                    <span className="text-gray-500 font-medium">Progress</span>
+                                    <span>
+                                        <span className="text-[#00d084]">{Math.round(percentage)}%</span> <span className="text-gray-400 font-medium">({completedQty}/{totalQty})</span>
+                                    </span>
                                 </div>
-                                <div className="h-2 w-full bg-gray-100 rounded-full overflow-hidden">
+                                <div className="h-1.5 w-full bg-gray-100 rounded-full overflow-hidden flex">
                                     <div
                                         className="h-full bg-orange-500 rounded-full transition-all duration-1000 ease-out"
                                         style={{ width: `${percentage}%` }}
@@ -144,16 +138,18 @@ const ProductPending: React.FC<ProductPendingProps> = ({ bills, searchTerm }) =>
             })}
 
             {/* Handover Modal */}
-            {selectedBill && (
-                <ProductHandoverModal
-                    bill={selectedBill}
-                    onClose={() => setSelectedBillId(null)}
-                    onUpdate={() => {
-                        // Store updates propagate automatically via bills prop
-                    }}
-                />
-            )}
-        </div>
+            {
+                selectedBill && (
+                    <ProductHandoverModal
+                        bill={selectedBill}
+                        onClose={() => setSelectedBillId(null)}
+                        onUpdate={() => {
+                            // Store updates propagate automatically via bills prop
+                        }}
+                    />
+                )
+            }
+        </div >
     );
 };
 

@@ -2,6 +2,7 @@ import React, { useState, useMemo } from 'react';
 import { Bill, ProductStatus, HandoverEvent } from '../types';
 import { X, Package, ArrowRight, User, CheckCircle2, History, Truck, Plus, Minus, Trash2, ChevronDown, CheckSquare, Square, Undo2 } from 'lucide-react';
 import { store } from '../store';
+import { sendProductUpdateWhatsapp } from '../services/smsService';
 
 interface ProductHandoverModalProps {
     bill: Bill;
@@ -18,6 +19,9 @@ const ProductHandoverModal: React.FC<ProductHandoverModalProps> = ({ bill, onClo
     const [giveQty, setGiveQty] = useState<number>(0);
     const [givenToName, setGivenToName] = useState<string>('');
     const [isSubmitting, setIsSubmitting] = useState(false);
+
+    // Mobile Detail Panel State
+    const [isMobileDetailOpen, setIsMobileDetailOpen] = useState(false);
 
     // Initial load: Select first pending item
     React.useEffect(() => {
@@ -57,37 +61,96 @@ const ProductHandoverModal: React.FC<ProductHandoverModalProps> = ({ bill, onClo
             newChecked.add(id);
         }
         setCheckedItems(newChecked);
-        // If we just checked an item, maybe select it too? No, keep selection separate or update it?
-        // Let's make the last checked item the "preview" if needed, but in bulk mode we show summary.
+    };
+
+    const handleItemClick = (id: string) => {
+        setSelectedItemId(id);
+        setIsMobileDetailOpen(true);
     };
 
     const handleConfirmHandover = async () => {
         setIsSubmitting(true);
         try {
-            if (isBulkMode) {
-                // Bulk Delivery
-                // For bulk, we currently assume "Give All Pending" for simplified UI, 
-                // OR we need to handle per-item quantity? 
-                // The Reference UI implies "Confirm Bulk Delivery (3 Units)". 
-                // Usually bulk delivery implies "Delivered Full" or "Delivered All Pending".
-                // Let's assume giving ALL pending quantity for checked items for now, 
-                // or we can just use the simplest approach: Mark as Delivered (Full Pending Qty).
+            // Collect products being given for notification
+            const productsBeingGiven: { name: string; qty: number }[] = [];
 
+            if (isBulkMode) {
                 const promises = Array.from(checkedItems).map(id => {
                     const item = items.find(i => i.id === id);
                     if (!item) return Promise.resolve();
                     const qty = item.pendingQuantity !== undefined ? item.pendingQuantity : item.quantity;
-                    if (qty <= 0) return Promise.resolve(); // Skip completed
+                    if (qty <= 0) return Promise.resolve();
+                    productsBeingGiven.push({ name: item.name, qty });
                     return store.recordHandover(bill.id, id, qty, givenToName);
                 });
 
                 await Promise.all(promises);
-                setCheckedItems(new Set()); // Clear selection
+                setCheckedItems(new Set());
+                setIsMobileDetailOpen(false); // Close on success
             } else {
-                // Single Item Delivery
                 if (!selectedItemId || giveQty <= 0) return;
+                const item = items.find(i => i.id === selectedItemId);
+                if (item) {
+                    productsBeingGiven.push({ name: item.name, qty: giveQty });
+                }
                 await store.recordHandover(bill.id, selectedItemId, giveQty, givenToName);
+                // Maybe keep open or close? User usually wants to do next item.
+                // Let's close on mobile to show updated list
+                if (window.innerWidth < 768) setIsMobileDetailOpen(false);
             }
+
+            // Send WhatsApp notification
+            if (productsBeingGiven.length > 0) {
+                console.log('[ProductHandover] Products being given:', productsBeingGiven);
+
+                // Look up customer phone from store
+                const customers = store.getCustomers();
+                console.log('[ProductHandover] Total customers in store:', customers.length);
+                console.log('[ProductHandover] Looking for customer:', bill.customerName);
+
+                const customer = customers.find(c => c.name.toLowerCase() === bill.customerName.toLowerCase());
+                console.log('[ProductHandover] Customer found:', customer);
+                console.log('[ProductHandover] Bill snapshotUrl:', bill.snapshotUrl);
+
+                // Use snapshotUrl or fallback to public invoice URL
+                const billUrl = bill.snapshotUrl || `${window.location.origin}/?billId=${encodeURIComponent(bill.id)}`;
+                console.log('[ProductHandover] Using billUrl:', billUrl);
+
+                if (customer && customer.phone) {
+                    // Format products list: "ProductA (1), ProductB (2)" matching template format
+                    const productsGivenList = productsBeingGiven
+                        .map(p => `${p.name} (${p.qty})`)
+                        .join(', ');
+
+                    console.log('[ProductHandover] Sending WhatsApp notification...');
+                    console.log('[ProductHandover] Phone:', customer.phone);
+                    console.log('[ProductHandover] Bill ID:', bill.id);
+                    console.log('[ProductHandover] Products List:', productsGivenList);
+
+                    // Send notification (fire and forget, don't block UI)
+                    sendProductUpdateWhatsapp(
+                        customer.phone,
+                        bill.id,
+                        productsGivenList,
+                        billUrl
+                    ).then(success => {
+                        if (success) {
+                            console.log('[ProductHandover] Product update WhatsApp sent successfully');
+                        } else {
+                            console.log('[ProductHandover] Product update WhatsApp returned false');
+                        }
+                    }).catch(err => {
+                        console.error('[ProductHandover] Failed to send product update WhatsApp:', err);
+                    });
+                } else {
+                    console.log('[ProductHandover] Missing required data for notification:');
+                    console.log('  - Customer found:', !!customer);
+                    console.log('  - Customer phone:', customer?.phone);
+                }
+            } else {
+                console.log('[ProductHandover] No products being given, skipping notification');
+            }
+
             onUpdate();
         } catch (error) {
             console.error("Failed to record handover", error);
@@ -125,22 +188,30 @@ const ProductHandoverModal: React.FC<ProductHandoverModalProps> = ({ bill, onClo
 
     return (
         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[200] flex items-center justify-center p-4 animate-fade-in font-sans">
-            <div className="bg-white w-full max-w-4xl rounded-2xl shadow-2xl overflow-hidden flex flex-col md:flex-row h-[80vh] md:h-[600px] border border-gray-100">
+            <div className="bg-white w-full max-w-4xl rounded-2xl shadow-2xl overflow-hidden flex flex-col md:flex-row h-[80vh] md:h-[600px] border border-gray-100 relative">
 
-                {/* Left Sidebar: Item List */}
-                <div className="w-full md:w-[300px] flex flex-col border-r border-gray-100 bg-white">
-                    <div className="p-5 border-b border-gray-50">
-                        <h1 className="text-lg font-bold text-slate-800">Delivery Management</h1>
-                        <p className="text-[10px] text-slate-500 mt-0.5 uppercase tracking-tight">
-                            Bill <span className="font-semibold text-slate-700">#{bill.id}</span> • {bill.customerName}
-                        </p>
+                {/* Left Sidebar: Item List (Always Visible, Full Width on Mobile) */}
+                <div className="w-full md:w-[300px] flex flex-col border-r border-gray-100 bg-white h-full relative">
+                    <div className="p-5 border-b border-gray-50 flex justify-between items-center">
+                        <div>
+                            <h1 className="text-lg font-bold text-slate-800">Delivery Management</h1>
+                            <p className="text-[10px] text-slate-500 mt-0.5 uppercase tracking-tight">
+                                Bill <span className="font-semibold text-slate-700">#{bill.id}</span> • {bill.customerName}
+                            </p>
+                        </div>
+                        {/* Mobile Close Button for Main Modal */}
+                        <button
+                            onClick={onClose}
+                            className="md:hidden p-2 -mr-2 text-slate-400 hover:text-slate-600 rounded-full"
+                        >
+                            <X size={20} />
+                        </button>
                     </div>
 
-                    <div className="flex-1 overflow-y-auto p-3 space-y-2 bg-slate-50/50 custom-scrollbar">
+                    <div className="flex-1 overflow-y-auto p-3 space-y-2 bg-slate-50/50 custom-scrollbar pb-24 md:pb-3">
                         {items.map(item => {
                             const pQty = item.pendingQuantity !== undefined ? item.pendingQuantity : item.quantity;
                             const isFullyGiven = pQty === 0;
-                            // Highlight if selected OR checked
                             const isChecked = checkedItems.has(item.id);
                             const isSelected = selectedItemId === item.id;
                             const progress = ((item.quantity - pQty) / item.quantity) * 100;
@@ -148,7 +219,7 @@ const ProductHandoverModal: React.FC<ProductHandoverModalProps> = ({ bill, onClo
                             return (
                                 <div
                                     key={item.id}
-                                    onClick={() => setSelectedItemId(item.id)}
+                                    onClick={() => handleItemClick(item.id)}
                                     className={`p-3 rounded-xl border transition-all cursor-pointer relative overflow-hidden group flex gap-3 ${(isSelected || isChecked)
                                         ? 'bg-white border-2 border-orange-400 shadow-sm'
                                         : 'bg-white border-transparent hover:border-slate-200 shadow-sm'
@@ -199,16 +270,70 @@ const ProductHandoverModal: React.FC<ProductHandoverModalProps> = ({ bill, onClo
                             );
                         })}
                     </div>
+
+                    {/* Mobile Bulk Selection Sticky Footer */}
+                    {isBulkMode && !isMobileDetailOpen && (
+                        <div className="md:hidden absolute bottom-0 left-0 right-0 p-4 bg-white border-t border-gray-100 shadow-[0_-10px_20px_rgba(0,0,0,0.05)] flex items-center gap-3 z-10 animate-fade-in-up">
+                            <button
+                                onClick={() => setCheckedItems(new Set())}
+                                className="w-12 h-12 rounded-xl bg-slate-100 hover:bg-red-50 flex items-center justify-center text-slate-500 hover:text-red-500 transition-colors"
+                            >
+                                <X size={20} />
+                            </button>
+                            <button
+                                onClick={() => setIsMobileDetailOpen(true)}
+                                className="flex-1 bg-orange-500 hover:bg-[#e9914b] text-white font-bold py-3.5 rounded-xl shadow-lg shadow-orange-200 flex items-center justify-center gap-2"
+                            >
+                                Continue ({checkedItems.size})
+                                <ArrowRight size={18} />
+                            </button>
+                        </div>
+                    )}
                 </div>
 
-                {/* Right Content Area */}
-                <div className="flex-1 flex flex-col overflow-hidden relative bg-white">
+                {/* Mobile Backdrop for Detail Panel */}
+                {isMobileDetailOpen && (
+                    <div
+                        className="md:hidden absolute inset-0 bg-black/20 z-10 backdrop-blur-[1px]"
+                        onClick={() => setIsMobileDetailOpen(false)}
+                    />
+                )}
+
+                {/* Right Content Area (Detail Panel / Bottom Sheet) */}
+                <div className={`
+                    bg-white 
+                    /* Mobile Styles: Fixed Bottom Sheet */
+                    absolute md:static 
+                    inset-x-0 bottom-0 
+                    h-[70vh] md:h-auto 
+                    z-20 
+                    rounded-t-2xl md:rounded-none 
+                    shadow-[0_-10px_40px_-15px_rgba(0,0,0,0.3)] md:shadow-none
+                    transition-transform duration-300 ease-out
+                    ${isMobileDetailOpen ? 'translate-y-0' : 'translate-y-full md:translate-y-0'}
+                    flex flex-col flex-1 overflow-hidden
+                `}>
+                    {/* Desktop Close Button */}
                     <button
                         onClick={onClose}
-                        className="absolute top-6 right-6 p-2 text-slate-400 hover:text-slate-600 transition-colors z-20 rounded-full hover:bg-slate-100"
+                        className="hidden md:block absolute top-6 right-6 p-2 text-slate-400 hover:text-slate-600 transition-colors z-20 rounded-full hover:bg-slate-100"
                     >
                         <X size={20} />
                     </button>
+
+                    {/* Mobile Sheet Handle / Header */}
+                    <div className="md:hidden p-4 border-b border-gray-100 flex items-center justify-between bg-slate-50/50 rounded-t-2xl">
+                        <div className="w-12 h-1 bg-slate-300 rounded-full mx-auto absolute left-1/2 -translate-x-1/2 top-3"></div>
+                        <span className="font-bold text-slate-700 text-sm pt-2">
+                            {isBulkMode ? `Bulk Delivery (${bulkTotalUnits})` : 'Delivery Details'}
+                        </span>
+                        <button
+                            onClick={() => setIsMobileDetailOpen(false)}
+                            className="p-1 -mr-1 text-slate-400 hover:text-slate-600 pt-2"
+                        >
+                            <ChevronDown size={20} />
+                        </button>
+                    </div>
 
                     <div className="flex-1 overflow-y-auto custom-scrollbar">
 
@@ -216,7 +341,7 @@ const ProductHandoverModal: React.FC<ProductHandoverModalProps> = ({ bill, onClo
                             {/* BULK MODE UI */}
                             {isBulkMode ? (
                                 <div className="max-w-md mx-auto w-full animate-fade-in-up">
-                                    <div className="mb-6 text-center">
+                                    <div className="mb-6 text-center hidden md:block">
                                         <div className="w-14 h-14 bg-orange-100 rounded-full flex items-center justify-center mx-auto mb-3 text-orange-600">
                                             <Truck size={24} />
                                         </div>
@@ -276,13 +401,19 @@ const ProductHandoverModal: React.FC<ProductHandoverModalProps> = ({ bill, onClo
                                 /* SINGLE ITEM MODE UI */
                                 activeItem && activePendingQty > 0 ? (
                                     <div className="max-w-md mx-auto w-full animate-fade-in-up">
-                                        <div className="mb-8 text-center">
+                                        <div className="mb-8 text-center hidden md:block">
                                             <div className="w-14 h-14 bg-orange-100 rounded-full flex items-center justify-center mx-auto mb-4 text-orange-600">
                                                 <Truck size={24} />
                                             </div>
                                             <h2 className="text-[11px] font-bold text-slate-500 uppercase tracking-[0.2em] mb-1">New Entry</h2>
                                             <h3 className="text-2xl font-bold text-slate-900">Confirm Delivery</h3>
                                             <p className="text-sm text-slate-400 mt-2 font-medium">{activeItem.name}</p>
+                                        </div>
+
+                                        {/* Mobile Title Replacement */}
+                                        <div className="md:hidden mb-6">
+                                            <h3 className="text-lg font-bold text-slate-900 leading-tight mb-1">{activeItem.name}</h3>
+                                            <p className="text-xs text-slate-500 uppercase tracking-wide font-semibold">Confirm Item Delivery</p>
                                         </div>
 
                                         <div className="space-y-6">
@@ -418,4 +549,3 @@ const ProductHandoverModal: React.FC<ProductHandoverModalProps> = ({ bill, onClo
 };
 
 export default ProductHandoverModal;
-

@@ -88,12 +88,10 @@ const SPCompleted: React.FC<SPCompletedProps> = ({ bills, searchTerm, onUpdate }
 
     // Format date for display
     const formatCompletionDate = (bill: Bill): string => {
-        // If we have history, show the date
         if (bill.spHistory && bill.spHistory.length > 0) {
             const date = getCompletionDate(bill);
-            return `Completed ${date.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}`;
+            return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
         }
-        // If no history (legacy/bug), don't show a misleading date, just "Completed"
         return "Completed";
     };
 
@@ -129,44 +127,43 @@ const SPCompleted: React.FC<SPCompletedProps> = ({ bills, searchTerm, onUpdate }
                         </div>
 
                         {groupBills.map((bill) => (
-                            <div key={bill.id} className="relative bg-white rounded-xl p-3 border border-gray-100 shadow-sm mb-2 hover:shadow-md transition-shadow md:grid md:grid-cols-12 md:gap-4 md:px-6 md:py-4 md:shadow-none md:mb-0 md:border-0 md:border-b md:border-gray-100 md:rounded-none md:hover:bg-gray-50 group cursor-pointer" onClick={() => setSelectedBillId(bill.id)}>
+                            <div key={bill.id} className="relative bg-white p-4 border border-gray-100 shadow-sm rounded-2xl mb-3 hover:shadow-md transition-shadow md:grid md:grid-cols-12 md:gap-4 md:px-6 md:py-4 md:shadow-none md:mb-0 md:border-0 md:border-b md:border-gray-100 md:rounded-none md:hover:bg-gray-50 group cursor-pointer" onClick={() => setSelectedBillId(bill.id)}>
                                 {/* Mobile: Top Row (Indicator + Details + Price) */}
-                                <div className="flex items-start justify-between mb-2 md:contents">
+                                <div className="flex items-start justify-between mb-4 md:contents">
 
                                     {/* Left Side: Indicator + Info */}
                                     <div className="flex gap-3 md:contents">
                                         {/* Green Dot Indicator (Mobile: Square Border context / Desktop: Col 1) */}
                                         <div className="md:col-span-1 md:flex md:justify-center mt-0.5 md:mt-0">
                                             <div className="w-5 h-5 rounded border-2 border-slate-200 bg-slate-50 flex items-center justify-center md:border-gray-200 md:bg-gray-50">
-                                                <span className="block w-2 h-2 bg-green-500 rounded-full"></span>
+                                                <span className="block w-2 h-2 bg-[#00d084] rounded-full"></span>
                                             </div>
                                         </div>
 
                                         {/* Details (Name, Badge, Date) */}
                                         <div className="md:col-span-4 md:pl-0">
-                                            <h3 className="font-bold text-gray-800 leading-tight md:text-gray-900 md:text-base md:font-semibold md:truncate md:max-w-[200px]">
+                                            <h3 className="text-[15px] font-bold text-gray-900 leading-tight md:text-base md:font-semibold md:truncate md:max-w-[200px]">
                                                 {bill.customerName}
                                             </h3>
-                                            <div className="flex items-center gap-2 mt-0.5 md:mt-1">
-                                                <span className="text-[10px] font-medium px-1.5 py-0.5 bg-gray-100 text-gray-500 rounded md:text-xs">
-                                                    #{bill.id}
+                                            <p className="text-xs text-gray-500 font-medium mt-1.5 flex items-center gap-1.5 md:hidden">
+                                                <span>##{bill.id}</span>
+                                                <span>•</span>
+                                                <span className="inline-flex items-center gap-1 bg-[#00d084]/10 text-[#00d084] px-1.5 py-0.5 rounded font-bold">
+                                                    ✔ {formatCompletionDate(bill)}
                                                 </span>
-                                                <div className="flex items-center gap-2 md:hidden">
-                                                    <span className="text-[10px] text-gray-400">{formatCompletionDate(bill)}</span>
-                                                </div>
-                                                {/* Desktop Date + Price Row */}
-                                                <div className="hidden md:flex items-center gap-2 mt-1 text-sm text-gray-500">
-                                                    <span className="text-emerald-600 font-medium">{formatCompletionDate(bill)}</span>
-                                                    <span className="w-1 h-1 rounded-full bg-gray-300"></span>
-                                                    <span className="font-medium">₹{bill.totalAmount.toLocaleString()}</span>
-                                                </div>
+                                            </p>
+                                            {/* Desktop Date + Price Row */}
+                                            <div className="hidden md:flex items-center gap-2 mt-1 text-sm text-gray-500">
+                                                <span className="text-emerald-600 font-medium">{formatCompletionDate(bill)}</span>
+                                                <span className="w-1 h-1 rounded-full bg-gray-300"></span>
+                                                <span className="font-medium">₹{bill.totalAmount.toLocaleString()}</span>
                                             </div>
                                         </div>
                                     </div>
 
                                     {/* Right Side: Price (Mobile Only) */}
                                     <div className="text-right md:hidden">
-                                        <div className="font-bold text-gray-900">₹{bill.totalAmount.toLocaleString()}</div>
+                                        <div className="font-bold text-gray-900 text-[15px]">₹{bill.totalAmount.toLocaleString()}</div>
                                     </div>
                                 </div>
 
@@ -175,16 +172,16 @@ const SPCompleted: React.FC<SPCompletedProps> = ({ bills, searchTerm, onUpdate }
 
                                     {/* SP Progress (Mobile: Flex-1 / Desktop: Col 4) */}
                                     <div className="flex-1 md:col-span-4">
-                                        <div className="flex justify-between items-center text-[10px] mb-1 md:text-xs md:mb-1.5">
-                                            <span className="font-bold text-green-600">
-                                                Completed
+                                        <div className="flex justify-between items-center text-[13px] font-semibold mb-1.5 md:text-xs md:mb-1.5">
+                                            <span className="text-gray-500 font-medium md:text-gray-700">
+                                                SP Status
                                             </span>
-                                            <span className="text-gray-400 md:uppercase md:font-semibold">
-                                                {bill.totalSp} TOTAL
+                                            <span>
+                                                <span className="text-[#00d084]">100%</span> <span className="text-gray-400 font-medium md:uppercase md:font-semibold">({bill.totalSp} Total)</span>
                                             </span>
                                         </div>
-                                        <div className="w-full h-1.5 bg-gray-100 rounded-full overflow-hidden md:bg-gray-200">
-                                            <div className="bg-green-500 h-full w-full rounded-full"></div>
+                                        <div className="w-full h-1.5 bg-gray-100 rounded-full overflow-hidden flex md:bg-gray-200">
+                                            <div className="h-full bg-[#00d084] rounded-full w-full"></div>
                                         </div>
                                     </div>
 

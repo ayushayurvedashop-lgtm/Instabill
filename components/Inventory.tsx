@@ -1,9 +1,11 @@
-import React, { useState, useEffect } from 'react';
-import { Search, Plus, BrainCircuit, AlertTriangle, MoreHorizontal, Package, Pencil, Trash2, X, Save, Download, ChevronDown, Camera, Upload, Filter, Sparkles, TrendingUp, AlertCircle, ShoppingCart } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { Search, Plus, BrainCircuit, AlertTriangle, MoreHorizontal, Package, Pencil, Trash2, X, Save, Download, ChevronDown, Camera, Upload, Filter, Sparkles, TrendingUp, AlertCircle, ShoppingCart, Image as ImageIcon } from 'lucide-react';
 import { store } from '../store';
 import { Product, SmartAlertItem } from '../types';
 import { ReceiptScanModal } from './ReceiptScanModal';
 import { ASCLEPIUS_CATALOG } from '../asclepiusData';
+import { storage } from '../firebaseConfig';
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 
 const Inventory: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
@@ -25,8 +27,14 @@ const Inventory: React.FC = () => {
     mrp: '',
     dp: '',
     sp: '',
-    stock: ''
+    stock: '',
+    imageUrl: ''
   });
+
+  // Image upload state
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [isUploadingImage, setIsUploadingImage] = useState(false);
+  const imageInputRef = useRef<HTMLInputElement>(null);
 
   // Mobile Stats Toggle
   const [isStatsOpen, setIsStatsOpen] = useState(false);
@@ -71,7 +79,8 @@ const Inventory: React.FC = () => {
 
   const handleOpenAdd = () => {
     setEditingProduct(null);
-    setFormData({ name: '', category: '', mrp: '', dp: '', sp: '', stock: '' });
+    setFormData({ name: '', category: '', mrp: '', dp: '', sp: '', stock: '', imageUrl: '' });
+    setImagePreview(null);
     setIsModalOpen(true);
   };
 
@@ -83,8 +92,10 @@ const Inventory: React.FC = () => {
       mrp: product.mrp.toString(),
       dp: product.dp.toString(),
       sp: product.sp.toString(),
-      stock: product.stock.toString()
+      stock: product.stock.toString(),
+      imageUrl: product.imageUrl || ''
     });
+    setImagePreview(product.imageUrl || null);
     setIsModalOpen(true);
   };
 
@@ -96,6 +107,36 @@ const Inventory: React.FC = () => {
   };
 
 
+
+  // Handle image upload
+  const handleImageUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    setIsUploadingImage(true);
+    try {
+      // Create preview
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setImagePreview(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+
+      // Upload to Firebase Storage
+      const timestamp = Date.now();
+      const fileName = `product-images/${timestamp}_${file.name.replace(/[^a-zA-Z0-9.]/g, '_')}`;
+      const storageRef = ref(storage, fileName);
+      await uploadBytes(storageRef, file);
+      const downloadURL = await getDownloadURL(storageRef);
+
+      setFormData(prev => ({ ...prev, imageUrl: downloadURL }));
+    } catch (error) {
+      console.error('Error uploading image:', error);
+      alert('Failed to upload image. Please try again.');
+    } finally {
+      setIsUploadingImage(false);
+    }
+  };
 
   const handleSave = async () => {
     if (!formData.name || !formData.mrp) {
@@ -109,7 +150,8 @@ const Inventory: React.FC = () => {
       mrp: Number(formData.mrp),
       dp: Number(formData.dp),
       sp: Number(formData.sp),
-      stock: Number(formData.stock)
+      stock: Number(formData.stock),
+      imageUrl: formData.imageUrl || undefined
     };
 
     if (editingProduct) {
@@ -265,6 +307,53 @@ const Inventory: React.FC = () => {
                   className="w-full px-4 py-3 bg-bg rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/50 font-medium"
                   placeholder="0"
                 />
+              </div>
+
+              {/* Product Image Upload */}
+              <div>
+                <label className="block text-sm font-bold text-gray-700 mb-1 ml-1">Product Image</label>
+                <div className="flex items-center gap-4">
+                  {/* Image Preview */}
+                  <div className="w-24 h-24 bg-bg rounded-xl border-2 border-dashed border-gray-300 flex items-center justify-center overflow-hidden">
+                    {imagePreview ? (
+                      <img src={imagePreview} alt="Preview" className="w-full h-full object-cover" />
+                    ) : (
+                      <ImageIcon size={32} className="text-gray-400" />
+                    )}
+                  </div>
+
+                  {/* Upload Button */}
+                  <div className="flex-1">
+                    <button
+                      type="button"
+                      onClick={() => imageInputRef.current?.click()}
+                      disabled={isUploadingImage}
+                      className="w-full px-4 py-3 bg-bg rounded-xl font-medium text-gray-700 hover:bg-gray-200 transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
+                    >
+                      {isUploadingImage ? (
+                        <>
+                          <div className="w-4 h-4 border-2 border-gray-400 border-t-transparent rounded-full animate-spin" />
+                          Uploading...
+                        </>
+                      ) : (
+                        <>
+                          <Upload size={18} />
+                          {imagePreview ? 'Change Image' : 'Upload Image'}
+                        </>
+                      )}
+                    </button>
+                    <p className="text-xs text-gray-500 mt-1 ml-1">JPG, PNG up to 5MB</p>
+                  </div>
+
+                  {/* Hidden File Input */}
+                  <input
+                    ref={imageInputRef}
+                    type="file"
+                    accept="image/*"
+                    onChange={handleImageUpload}
+                    className="hidden"
+                  />
+                </div>
               </div>
             </div>
 

@@ -3,6 +3,7 @@ import { AreaChart, Area, XAxis, Tooltip, ResponsiveContainer } from 'recharts';
 import { TrendingUp, PieChart, ShoppingCart, Users, Calendar, MoreHorizontal, ChevronLeft, ChevronRight, Printer, Banknote, Smartphone } from 'lucide-react';
 import { store } from '../store';
 import { Product, Bill } from '../types';
+import { getLocalDateString } from '../lib/utils';
 import BillDetailModal from './BillDetailModal';
 import DailyStatsModal from './DailyStatsModal';
 import TodayOverview from './TodayOverview';
@@ -112,7 +113,7 @@ const Dashboard: React.FC<DashboardProps> = ({ setActiveView, onEditBill, search
           for (let i = 6; i >= 0; i--) {
             const d = new Date(now);
             d.setDate(now.getDate() - i);
-            const dateStr = d.toISOString().split('T')[0];
+            const dateStr = getLocalDateString(d);
             const dayName = d.toLocaleDateString('en-US', { weekday: 'short' });
             const dayBills = chartSourceBills.filter(b => b.date === dateStr);
             const total = dayBills.reduce((acc, b) => acc + b.totalAmount, 0);
@@ -127,7 +128,7 @@ const Dashboard: React.FC<DashboardProps> = ({ setActiveView, onEditBill, search
           const daysInMonth = now.getDate();
           for (let i = 1; i <= daysInMonth; i++) {
             const d = new Date(now.getFullYear(), now.getMonth(), i);
-            const dateStr = d.toISOString().split('T')[0];
+            const dateStr = getLocalDateString(d);
             const dayLabel = `${d.getDate()}`;
             const dayBills = chartSourceBills.filter(b => b.date === dateStr);
             const total = dayBills.reduce((acc, b) => acc + b.totalAmount, 0);
@@ -306,8 +307,24 @@ const Dashboard: React.FC<DashboardProps> = ({ setActiveView, onEditBill, search
     return colors[index];
   };
 
+  // Get time-based greeting
+  const getGreeting = () => {
+    const hour = new Date().getHours();
+    if (hour < 12) return 'Good morning';
+    if (hour < 17) return 'Good afternoon';
+    return 'Good evening';
+  };
+
   return (
     <div className="flex flex-col gap-6 w-full pb-8">
+      {/* Greeting Section */}
+      <div className="px-1 md:px-2 pt-6 md:pt-8 mb-2">
+        <h1 className="text-4xl md:text-[2rem] md:leading-[2.2rem] font-extrabold text-[#12332A] tracking-tight">
+          {getGreeting()},<br className="md:hidden" />
+          <span className="md:ml-2 text-transparent bg-clip-text bg-gradient-to-r from-green-600 to-[#21776A]">Welcome back!</span>
+        </h1>
+      </div>
+
       {/* Hero Section - Sales Trends */}
       <section className="bg-white rounded-3xl p-6 md:p-8 shadow-sm border border-gray-100 mb-8 relative overflow-hidden">
         <div className="flex flex-col lg:flex-row gap-8 relative z-10">

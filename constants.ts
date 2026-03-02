@@ -1,5 +1,5 @@
-
 import { Product, Customer, PaymentMethod, Bill } from './types';
+import { getLocalDateString } from './lib/utils';
 
 export const MOCK_PRODUCTS: Product[] = [
   { id: '1', name: 'ImmunoDoc Ras', category: 'Wellness', mrp: 1500, dp: 1200, sp: 10, stock: 45 },
@@ -26,14 +26,17 @@ export const MOCK_CUSTOMERS: Customer[] = [
 export const EMPTY_BILL: Bill = {
   id: '',
   customerName: '',
-  date: new Date().toISOString().split('T')[0],
+  date: getLocalDateString(),
   time: '',
   items: [],
-  isPaid: false,
-  paymentMethod: PaymentMethod.CASH,
+  isPaid: true,
+  paymentMethod: PaymentMethod.ONLINE,
   cashAmount: 0,
   onlineAmount: 0,
   totalAmount: 0,
+  subTotalAmount: 0,
   totalSp: 0,
   billingType: 'DP',
+  showSpOnBill: true,
+  sendWhatsapp: true,
 };

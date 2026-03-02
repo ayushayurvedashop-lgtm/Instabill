@@ -28,32 +28,70 @@ const ProductCompleted: React.FC<ProductCompletedProps> = ({ bills, searchTerm }
             {bills.map((bill) => {
                 const totalQty = bill.items.reduce((sum, item) => sum + item.quantity, 0);
 
+                // Calculate completion date (latest handover date)
+                let latestDate = new Date(bill.date).getTime();
+                let completionDateStr = bill.date;
+                bill.items.forEach(item => {
+                    if (item.handoverLog) {
+                        item.handoverLog.forEach(log => {
+                            const logTime = new Date(log.date).getTime();
+                            if (logTime > latestDate) {
+                                latestDate = logTime;
+                                completionDateStr = log.date;
+                            }
+                        });
+                    }
+                });
+
+                // Format the completion date
+                const formatCompletionDate = (dateString: string) => {
+                    const d = new Date(dateString);
+                    // Standardizing the output format
+                    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+                };
+
+                const formattedCompletionDate = formatCompletionDate(completionDateStr);
+
                 return (
                     <div
                         key={bill.id}
                         onClick={() => setSelectedBillId(bill.id)}
-                        className="group bg-white hover:bg-gray-50 transition-colors cursor-pointer border-b md:border-b-0 md:rounded-none"
+                        className="group bg-white hover:bg-gray-50 transition-all cursor-pointer mb-3 md:mb-0 rounded-2xl md:rounded-none shadow-sm md:shadow-none border border-gray-100 md:border-none"
                     >
                         {/* Mobile View Card */}
-                        <div className="md:hidden p-4 space-y-3 relative overflow-hidden">
-                            {/* Green strip */}
-                            <div className="absolute left-0 top-0 bottom-0 w-1 bg-green-500" />
-
-                            <div className="flex justify-between items-start pl-2">
-                                <div>
-                                    <h3 className="font-bold text-gray-900">{bill.customerName}</h3>
-                                    <p className="text-xs text-gray-500 font-medium mt-0.5">#{bill.id} • {bill.date}</p>
+                        <div className="md:hidden p-4 relative overflow-hidden">
+                            <div className="flex justify-between items-start mb-4">
+                                <div className="pr-2">
+                                    <h3 className="text-[15px] font-bold text-gray-900 leading-tight">{bill.customerName}</h3>
+                                    <p className="text-xs text-gray-500 font-medium mt-1.5 flex items-center gap-1.5">
+                                        <span>##{bill.id}</span>
+                                        <span>•</span>
+                                        <span className="inline-flex items-center gap-1 bg-[#00d084]/10 text-[#00d084] px-1.5 py-0.5 rounded font-bold">
+                                            ✔ {formattedCompletionDate}
+                                        </span>
+                                    </p>
                                 </div>
-                                <div className="text-right">
-                                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-green-50 text-green-700 text-xs font-bold border border-green-100">
-                                        <CheckCircle2 size={12} strokeWidth={2.5} />
+                                <div className="text-right shrink-0 mt-0.5">
+                                    <span className="inline-flex flex-row items-center gap-1 px-2.5 py-1 rounded-full bg-green-50 text-green-700 text-[11px] font-bold border border-green-100/50">
+                                        <CheckCircle2 size={11} strokeWidth={2.5} />
                                         Completed
                                     </span>
                                 </div>
                             </div>
 
-                            <div className="pl-2 text-xs text-gray-500">
-                                All <b>{totalQty}</b> items delivered
+                            <div className="space-y-1.5">
+                                <div className="flex justify-between text-[13px] font-semibold">
+                                    <span className="text-gray-500 font-medium">Progress</span>
+                                    <span>
+                                        <span className="text-[#00d084]">100%</span> <span className="text-gray-400 font-medium">({totalQty}/{totalQty})</span>
+                                    </span>
+                                </div>
+                                <div className="h-1.5 w-full bg-gray-100 rounded-full overflow-hidden flex">
+                                    <div
+                                        className="h-full bg-[#00d084] rounded-full transition-all duration-1000 ease-out"
+                                        style={{ width: `100%` }}
+                                    />
+                                </div>
                             </div>
                         </div>
 
@@ -72,7 +110,13 @@ const ProductCompleted: React.FC<ProductCompletedProps> = ({ bills, searchTerm }
                                     </div>
                                     <div>
                                         <h4 className="font-bold text-gray-900 text-sm truncate">{bill.customerName}</h4>
-                                        <p className="text-xs text-gray-500 font-medium">Bill #{bill.id} • {bill.date}</p>
+                                        <p className="text-xs text-gray-500 font-medium flex items-center gap-1.5 mt-0.5">
+                                            <span>Bill #{bill.id}</span>
+                                            <span>•</span>
+                                            <span className="inline-flex items-center gap-1 bg-[#00d084]/10 text-[#00d084] px-1.5 py-0.5 rounded font-bold">
+                                                Completed: {formattedCompletionDate}
+                                            </span>
+                                        </p>
                                     </div>
                                 </div>
                             </div>
@@ -102,14 +146,16 @@ const ProductCompleted: React.FC<ProductCompletedProps> = ({ bills, searchTerm }
             })}
 
             {/* Handover Modal (View Only Mode mostly, but logic is same) */}
-            {selectedBill && (
-                <ProductHandoverModal
-                    bill={selectedBill}
-                    onClose={() => setSelectedBillId(null)}
-                    onUpdate={() => { }}
-                />
-            )}
-        </div>
+            {
+                selectedBill && (
+                    <ProductHandoverModal
+                        bill={selectedBill}
+                        onClose={() => setSelectedBillId(null)}
+                        onUpdate={() => { }}
+                    />
+                )
+            }
+        </div >
     );
 };
 

@@ -109,22 +109,22 @@ const CustomerSearchBar: React.FC<CustomerSearchBarProps> = ({
     return (
         <div ref={wrapperRef} className={`relative w-full ${className}`}>
             {/* Search Input Container */}
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2">
                 <div className="relative flex-1">
-                    <div className="absolute left-4 top-1/2 -translate-y-1/2 pointer-events-none">
-                        <User className="w-5 h-5 text-gray-400" />
+                    <div className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none">
+                        <User className="w-4 h-4 text-gray-400" />
                     </div>
                     <input
                         ref={inputRef}
                         type="text"
-                        placeholder="Search customer by name or phone..."
+                        placeholder="Search or add customer..."
                         value={value}
                         onChange={(e) => onChange(e.target.value)}
                         onFocus={() => setIsFocused(true)}
                         onKeyDown={handleKeyDown}
-                        className="w-full bg-white border-2 border-gray-200 rounded-xl pl-12 pr-12 py-3.5 text-sm font-medium text-gray-900 placeholder:text-gray-400 focus:outline-none focus:border-[#BCE32D] focus:ring-2 focus:ring-[#BCE32D]/30 transition-all shadow-sm"
+                        className="w-full bg-white border-2 border-gray-200 rounded-xl pl-9 pr-9 py-2.5 text-sm font-medium text-gray-900 placeholder:text-gray-400 focus:outline-none focus:border-[#BCE32D] focus:ring-2 focus:ring-[#BCE32D]/30 transition-all shadow-sm"
                     />
-                    <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none">
+                    <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none">
                         <AnimatePresence mode="popLayout">
                             {value ? (
                                 <motion.div
@@ -134,7 +134,7 @@ const CustomerSearchBar: React.FC<CustomerSearchBarProps> = ({
                                     exit={{ scale: 0.8, opacity: 0 }}
                                     transition={{ duration: 0.15 }}
                                 >
-                                    <User className="w-4 h-4 text-[#12332A]" />
+                                    <User className="w-3.5 h-3.5 text-[#12332A]" />
                                 </motion.div>
                             ) : (
                                 <motion.div
@@ -144,7 +144,7 @@ const CustomerSearchBar: React.FC<CustomerSearchBarProps> = ({
                                     exit={{ scale: 0.8, opacity: 0 }}
                                     transition={{ duration: 0.15 }}
                                 >
-                                    <Search className="w-4 h-4 text-gray-400" />
+                                    <Search className="w-3.5 h-3.5 text-gray-400" />
                                 </motion.div>
                             )}
                         </AnimatePresence>
@@ -154,10 +154,10 @@ const CustomerSearchBar: React.FC<CustomerSearchBarProps> = ({
                 {/* Add New Customer Button */}
                 <button
                     onClick={onAddNew}
-                    className="flex items-center gap-2 px-4 py-3.5 bg-[#12332A] hover:bg-[#1a4438] text-white rounded-xl font-semibold text-sm transition-all shadow-sm whitespace-nowrap"
+                    className="flex items-center gap-1.5 px-3 py-2.5 bg-[#12332A] hover:bg-[#1a4438] text-white rounded-xl font-semibold text-xs transition-all shadow-sm whitespace-nowrap"
                 >
-                    <UserPlus size={18} />
-                    <span className="hidden xl:inline">Add Customer</span>
+                    <UserPlus size={14} />
+                    <span className="hidden xl:inline">Add</span>
                 </button>
             </div>
 

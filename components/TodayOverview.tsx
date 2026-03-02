@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { TrendingUp, Banknote, Smartphone, PieChart, ShoppingCart, Users, Printer, Plus, X, Trash2, MinusCircle } from 'lucide-react';
 import { store } from '../store';
 import { CashDeduction } from '../types';
+import { getLocalDateString } from '../lib/utils';
 import DailyStatsModal from './DailyStatsModal';
 
 interface TodayOverviewProps {
@@ -27,7 +28,7 @@ const TodayOverview: React.FC<TodayOverviewProps> = ({ onClose }) => {
     useEffect(() => {
         const updateStats = () => {
             const allBills = store.getBills();
-            const today = new Date().toISOString().split('T')[0];
+            const today = getLocalDateString();
 
             // Normalize date for comparison
             const normalizeDateStr = (dateStr: string): string => {
@@ -101,7 +102,7 @@ const TodayOverview: React.FC<TodayOverviewProps> = ({ onClose }) => {
         await store.addCashDeduction({
             name: deductionName.trim(),
             amount,
-            date: today.toISOString().split('T')[0],
+            date: getLocalDateString(today),
             time: today.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true }),
         });
 
@@ -122,7 +123,7 @@ const TodayOverview: React.FC<TodayOverviewProps> = ({ onClose }) => {
     return (
         <div className="bg-white rounded-3xl shadow-lg border border-gray-100 overflow-hidden">
             {/* Header */}
-            <div className="bg-[#12332A] text-white p-6">
+            <div className="bg-[#111617] text-white p-6">
                 <div className="flex items-center justify-between mb-4">
                     <h2 className="text-xl font-bold">Today's Overview</h2>
                     <div className="flex items-center gap-2">
@@ -301,13 +302,13 @@ const TodayOverview: React.FC<TodayOverviewProps> = ({ onClose }) => {
                     )}
 
                     {/* Net Cash Summary */}
-                    <div className="mt-4 bg-[#BCE32D] rounded-2xl p-4">
+                    <div className="mt-4 bg-[#88DE7D] rounded-2xl p-4">
                         <div className="flex items-center justify-between">
                             <div>
-                                <p className="text-[#12332A] text-xs font-bold uppercase tracking-wide">Net Cash in Hand</p>
-                                <p className="text-xs text-[#12332A]/60 mt-0.5">Cash Collection - Deductions</p>
+                                <p className="text-[#111617] text-xs font-bold uppercase tracking-wide">Net Cash in Hand</p>
+                                <p className="text-xs text-[#111617]/70 mt-0.5">Cash Collection - Deductions</p>
                             </div>
-                            <p className={`text-3xl font-bold ${netCash >= 0 ? 'text-[#12332A]' : 'text-red-600'}`}>
+                            <p className={`text-3xl font-bold ${netCash >= 0 ? 'text-[#111617]' : 'text-red-600'}`}>
                                 ₹{netCash.toLocaleString()}
                             </p>
                         </div>

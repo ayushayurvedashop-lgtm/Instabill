@@ -8,12 +8,26 @@ interface SPPendingProps {
     bills: Bill[];
     searchTerm: string;
     onUpdate: () => void;
+    selectedBillIds: Set<string>;
+    toggleSelection: (id: string) => void;
+    clearSelection: () => void;
+    handleBulkComplete: () => Promise<void>;
+    isBulkCompleting: boolean;
 }
 
-const SPPending: React.FC<SPPendingProps> = ({ bills, searchTerm, onUpdate }) => {
+const SPPending: React.FC<SPPendingProps> = ({
+    bills,
+    searchTerm,
+    onUpdate,
+    selectedBillIds,
+    toggleSelection,
+    clearSelection,
+    handleBulkComplete,
+    isBulkCompleting
+}) => {
+
     const [selectedBillId, setSelectedBillId] = useState<string | null>(null);
-    const [selectedBillIds, setSelectedBillIds] = useState<Set<string>>(new Set());
-    const [isBulkCompleting, setIsBulkCompleting] = useState(false);
+
 
     // Derived selected bill ensures we always have the latest version from props
     const selectedBill = useMemo(() =>
@@ -69,47 +83,8 @@ const SPPending: React.FC<SPPendingProps> = ({ bills, searchTerm, onUpdate }) =>
             });
     }, [sortedBills, searchTerm]);
 
-    const toggleSelection = (id: string) => {
-        const newSet = new Set(selectedBillIds);
-        if (newSet.has(id)) newSet.delete(id);
-        else newSet.add(id);
-        setSelectedBillIds(newSet);
-    };
+    // Simplified selection logic using props
 
-    const handleBulkComplete = async () => {
-        if (!confirm(`Mark ${selectedBillIds.size} bills as completed?`)) return;
-        setIsBulkCompleting(true);
-        try {
-            await Promise.all(Array.from(selectedBillIds).map(async (id) => {
-                const bill = bills.find(b => b.id === id);
-                if (bill) {
-                    const spUpdated = bill.spUpdatedAmount || 0;
-                    const amountAdded = bill.totalSp - spUpdated;
-
-                    // Only update if there is actually remaining SP
-                    if (amountAdded > 0) {
-                        const historyEntry = {
-                            date: new Date().toISOString(),
-                            amount: amountAdded,
-                            total: bill.totalSp
-                        };
-                        const newHistory = [...(bill.spHistory || []), historyEntry];
-
-                        await store.updateBill({
-                            ...bill,
-                            spUpdatedAmount: bill.totalSp,
-                            spStatus: 'Completed',
-                            spHistory: newHistory
-                        });
-                    }
-                }
-            }));
-            setSelectedBillIds(new Set());
-            onUpdate();
-        } finally {
-            setIsBulkCompleting(false);
-        }
-    };
 
     return (
         <>
@@ -151,9 +126,9 @@ const SPPending: React.FC<SPPendingProps> = ({ bills, searchTerm, onUpdate }) =>
                             const remainingPercent = bill.totalSp > 0 ? (spRemaining / bill.totalSp) * 100 : 0;
 
                             return (
-                                <div key={bill.id} className="relative bg-white rounded-xl p-3 border border-gray-100 shadow-sm mb-2 hover:shadow-md transition-shadow md:grid md:grid-cols-12 md:gap-4 md:px-6 md:py-4 md:shadow-none md:mb-0 md:border-0 md:border-b md:border-gray-100 md:rounded-none md:hover:bg-gray-50 group">
+                                <div key={bill.id} className="relative bg-white p-4 border border-gray-100 shadow-sm rounded-2xl mb-3 hover:shadow-md transition-shadow md:grid md:grid-cols-12 md:gap-4 md:px-6 md:py-4 md:shadow-none md:mb-0 md:border-0 md:border-b md:border-gray-100 md:rounded-none md:hover:bg-gray-50 group">
                                     {/* Mobile: Top Row (Checkbox + Details + Price) */}
-                                    <div className="flex items-start justify-between mb-2 md:contents">
+                                    <div className="flex items-start justify-between mb-4 md:contents">
 
                                         {/* Left Side: Checkbox + Info */}
                                         <div className="flex gap-3 md:contents">
@@ -169,14 +144,14 @@ const SPPending: React.FC<SPPendingProps> = ({ bills, searchTerm, onUpdate }) =>
 
                                             {/* Details (Name, Badge, Date) */}
                                             <div className="md:col-span-4 md:pl-0">
-                                                <h3 className="font-bold text-gray-800 leading-tight md:text-gray-900 md:text-base md:font-semibold md:truncate md:max-w-[200px]" title={bill.customerName}>
+                                                <h3 className="text-[15px] font-bold text-gray-900 leading-tight md:text-base md:font-semibold md:truncate md:max-w-[200px]" title={bill.customerName}>
                                                     {bill.customerName}
                                                 </h3>
-                                                <div className="flex items-center gap-2 mt-0.5 md:mt-1">
-                                                    <span className="text-[10px] font-medium px-1.5 py-0.5 bg-gray-100 text-gray-500 rounded md:text-xs">
+                                                <div className="flex items-center gap-2 mt-1.5 md:mt-1">
+                                                    <span className="text-[11px] font-bold px-1.5 py-0.5 bg-gray-100 text-gray-600 rounded md:text-xs">
                                                         #{bill.id}
                                                     </span>
-                                                    <span className="text-[10px] text-gray-400 md:text-sm md:text-gray-500">
+                                                    <span className="text-[11px] font-medium text-gray-500 md:text-sm md:text-gray-500">
                                                         {bill.date}
                                                     </span>
                                                 </div>
@@ -185,7 +160,7 @@ const SPPending: React.FC<SPPendingProps> = ({ bills, searchTerm, onUpdate }) =>
 
                                         {/* Right Side: Price (Mobile Only - Desktop has own col) */}
                                         <div className="text-right md:hidden">
-                                            <div className="font-bold text-gray-900">₹{bill.totalAmount.toLocaleString()}</div>
+                                            <div className="font-bold text-gray-900 text-[15px]">₹{bill.totalAmount.toLocaleString()}</div>
                                         </div>
                                     </div>
 
@@ -209,17 +184,17 @@ const SPPending: React.FC<SPPendingProps> = ({ bills, searchTerm, onUpdate }) =>
 
                                         {/* SP Progress (Mobile: Flex-1 / Desktop: Col 4) */}
                                         <div className="flex-1 md:col-span-4">
-                                            <div className="flex justify-between items-center text-[10px] mb-1 md:text-xs md:mb-1.5">
-                                                <span className="font-bold text-orange-500 md:text-gray-700">
-                                                    {spRemaining} Left
+                                            <div className="flex justify-between items-center text-[13px] font-semibold mb-1.5 md:text-xs md:mb-1.5">
+                                                <span className="font-medium text-gray-500 md:text-gray-700">
+                                                    SP Status
                                                 </span>
-                                                <span className="text-gray-400 md:uppercase md:font-semibold">
-                                                    {bill.totalSp} TOTAL
+                                                <span>
+                                                    <span className="text-orange-500">{Math.round(remainingPercent)}% left</span> <span className="text-gray-400 md:uppercase md:font-semibold">({spRemaining} / {bill.totalSp})</span>
                                                 </span>
                                             </div>
                                             <div className="w-full h-1.5 bg-gray-100 rounded-full overflow-hidden md:bg-gray-200">
                                                 <div
-                                                    className={`h-full rounded-full ${remainingPercent < 30 ? 'bg-emerald-500' : remainingPercent < 70 ? 'bg-yellow-500' : 'bg-red-500'}`}
+                                                    className={`h-full rounded-full ${remainingPercent < 30 ? 'bg-success' : remainingPercent < 70 ? 'bg-yellow-500' : 'bg-red-500'}`}
                                                     style={{ width: `${remainingPercent}%` }}
                                                 />
                                             </div>
@@ -247,16 +222,18 @@ const SPPending: React.FC<SPPendingProps> = ({ bills, searchTerm, onUpdate }) =>
                 <div className="fixed bottom-24 left-0 right-0 mx-auto w-fit z-50 flex items-center justify-center gap-3 animate-slide-up max-w-[90vw]">
                     {/* Close/Deselect Button */}
                     <button
-                        onClick={() => setSelectedBillIds(new Set())}
+                        onClick={clearSelection}
                         className="bg-white text-red-500 w-14 h-14 rounded-full shadow-xl hover:bg-gray-50 border border-gray-100 transition-transform hover:scale-105 flex items-center justify-center shrink-0"
                     >
                         <X size={24} />
                     </button>
 
+
+
                     <button
                         onClick={handleBulkComplete}
                         disabled={isBulkCompleting}
-                        className="relative group bg-emerald-500 hover:bg-emerald-600 text-white font-bold py-4 px-6 rounded-2xl shadow-lg shadow-emerald-500/30 hover:shadow-emerald-500/50 transition-all duration-300 transform hover:-translate-y-0.5 flex items-center justify-center gap-3 overflow-hidden disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
+                        className="relative group bg-success hover:bg-success-hover text-white font-bold py-4 px-6 rounded-2xl shadow-lg shadow-success/30 hover:shadow-success/50 transition-all duration-300 transform hover:-translate-y-0.5 flex items-center justify-center gap-3 overflow-hidden disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
                     >
                         <span className="relative z-10 flex items-center gap-2">
                             {isBulkCompleting ? 'Updating...' : 'Mark as Completed'}

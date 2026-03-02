@@ -1,6 +1,7 @@
 
 import { Bill, Customer, Product, ProductStatus, SmartAlertItem, AppSettings, SPTracking, SPTask, CashDeduction, HandoverEvent } from './types';
 import { db } from './firebaseConfig';
+import { getLocalDateString } from './lib/utils';
 import {
   collection,
   addDoc,
@@ -18,11 +19,49 @@ import {
   deleteField
 } from 'firebase/firestore';
 
-// --- LOCAL STORAGE HELPERS ---
+// --- MULTI-TENANT SCOPING ---
+let currentShopId: string = '';
+let activeUnsubscribers: (() => void)[] = [];
+
+/**
+ * Returns a Firestore collection reference scoped to the current shop.
+ * e.g. shopCol('bills') → collection(db, 'shops', currentShopId, 'bills')
+ * Falls back to top-level collection if no shopId is set (legacy mode).
+ */
+const shopCol = (name: string) => {
+  if (currentShopId) {
+    return collection(db, 'shops', currentShopId, name);
+  }
+  return collection(db, name);
+};
+
+/**
+ * Returns a doc reference scoped to the current shop.
+ * e.g. shopDocRef('bills', 'abc') → doc(db, 'shops', currentShopId, 'bills', 'abc')
+ */
+const shopDocRef = (collName: string, docId: string) => {
+  if (currentShopId) {
+    return doc(db, 'shops', currentShopId, collName, docId);
+  }
+  return doc(db, collName, docId);
+};
+
+/**
+ * Returns the settings doc reference scoped to shop.
+ */
+const shopSettingsDoc = () => {
+  if (currentShopId) {
+    return doc(db, 'shops', currentShopId, 'settings', 'general');
+  }
+  return doc(db, 'settings', 'general');
+};
+
 const STORAGE_KEYS = {
   BILLS: 'vedabill_bills',
   CUSTOMERS: 'vedabill_customers',
   PRODUCTS: 'vedabill_products',
+  GLOBAL_PRODUCTS: 'vedabill_global_products',
+  LOCAL_INVENTORY: 'vedabill_local_inventory',
   SETTINGS: 'vedabill_settings',
   SP_TASKS: 'vedabill_sp_tasks',
   CASH_DEDUCTIONS: 'vedabill_cash_deductions'
@@ -46,10 +85,30 @@ const saveLocal = (key: string, data: any) => {
   }
 };
 
-// Initialize State from Local Storage First (Offline/Permission Backup)
-let bills: Bill[] = loadLocal(STORAGE_KEYS.BILLS);
+// Deduplicate bills by ID to prevent duplicate key errors in React and data corruption
+const deduplicateBills = (billList: Bill[]): Bill[] => {
+  const map = new Map<string, Bill>();
+  // By iterating, the last occurrence of the ID will overwrite previous ones.
+  // This helps when a newer updated version of a bill shares the same ID.
+  billList.forEach(b => map.set(b.id, b));
+  return Array.from(map.values());
+};
+
+let bills: Bill[] = deduplicateBills(loadLocal(STORAGE_KEYS.BILLS));
 let customers: Customer[] = loadLocal(STORAGE_KEYS.CUSTOMERS);
+
+// Phase 7: Global Catalog + Local Inventory
+let globalProducts: Product[] = loadLocal(STORAGE_KEYS.GLOBAL_PRODUCTS);
+let localInventory: Record<string, number> = loadLocal(STORAGE_KEYS.LOCAL_INVENTORY) || {};
 let products: Product[] = loadLocal(STORAGE_KEYS.PRODUCTS);
+
+const computeProducts = () => {
+  products = globalProducts.map(p => ({
+    ...p,
+    stock: localInventory[p.id] !== undefined ? localInventory[p.id] : 50
+  }));
+  saveLocal(STORAGE_KEYS.PRODUCTS, products);
+};
 
 const DEFAULT_SETTINGS: AppSettings = {
   shopName: 'Asclepius Wellness',
@@ -71,7 +130,7 @@ let isOffline = false;
 // Helper to notify subscribers
 const notify = () => listeners.forEach(l => l());
 
-// Initialize Listeners
+// Initialize Listeners (called after shopId is set)
 const initStore = () => {
   if (!db) {
     console.warn("Firestore database instance is not available.");
@@ -79,15 +138,20 @@ const initStore = () => {
     return;
   }
 
+  // Unsubscribe from any previous listeners
+  activeUnsubscribers.forEach(unsub => unsub());
+  activeUnsubscribers = [];
+
   try {
     // 1. Listen to Bills
-    const billsQuery = query(collection(db, 'bills'), orderBy('date', 'desc'));
-    onSnapshot(billsQuery, (snapshot) => {
+    const billsQuery = query(shopCol('bills'), orderBy('date', 'desc'));
+    activeUnsubscribers.push(onSnapshot(billsQuery, (snapshot) => {
       isOffline = false;
-      bills = snapshot.docs.map(doc => {
+      const fetchedBills = snapshot.docs.map(doc => {
         const data = doc.data();
         return { ...data, firestoreId: doc.id } as unknown as Bill;
       });
+      bills = deduplicateBills(fetchedBills);
       saveLocal(STORAGE_KEYS.BILLS, bills); // Sync to local
       notify();
     }, (error) => {
@@ -96,10 +160,10 @@ const initStore = () => {
         console.warn("Cloud sync disabled (Permissions). Using local storage.");
         isOffline = true;
       }
-    });
+    }));
 
     // 2. Listen to Customers
-    onSnapshot(collection(db, 'customers'), (snapshot) => {
+    activeUnsubscribers.push(onSnapshot(shopCol('customers'), (snapshot) => {
       customers = snapshot.docs.map(doc => {
         const data = doc.data();
         return { ...data, firestoreId: doc.id } as unknown as Customer;
@@ -108,32 +172,46 @@ const initStore = () => {
       notify();
     }, (error) => {
       if (error.code === 'permission-denied') isOffline = true;
-    });
+    }));
 
-    // 3. Listen to Products (Inventory)
-    onSnapshot(collection(db, 'products'), (snapshot) => {
-      products = snapshot.docs.map(doc => {
+    // 3a. Listen to Global Products Catalog
+    activeUnsubscribers.push(onSnapshot(collection(db, 'products'), (snapshot) => {
+      globalProducts = snapshot.docs.map(doc => {
         const data = doc.data();
-        return { ...data, id: doc.id } as unknown as Product;
+        return { ...data, id: doc.id } as Product;
       });
-      saveLocal(STORAGE_KEYS.PRODUCTS, products);
+      saveLocal(STORAGE_KEYS.GLOBAL_PRODUCTS, globalProducts);
+      computeProducts();
       notify();
     }, (error) => {
       if (error.code === 'permission-denied') isOffline = true;
-    });
+    }));
+
+    // 3b. Listen to Local Inventory Overrides
+    activeUnsubscribers.push(onSnapshot(shopCol('inventory'), (snapshot) => {
+      localInventory = {};
+      snapshot.docs.forEach(doc => {
+        localInventory[doc.id] = doc.data().stock;
+      });
+      saveLocal(STORAGE_KEYS.LOCAL_INVENTORY, localInventory);
+      computeProducts();
+      notify();
+    }, (error) => {
+      if (error.code === 'permission-denied') isOffline = true;
+    }));
 
     // 4. Listen to Settings
-    onSnapshot(doc(db, 'settings', 'general'), (docSnap) => {
+    activeUnsubscribers.push(onSnapshot(shopSettingsDoc(), (docSnap) => {
       if (docSnap.exists()) {
         settings = { ...DEFAULT_SETTINGS, ...docSnap.data() } as AppSettings;
         saveLocal(STORAGE_KEYS.SETTINGS, settings);
         notify();
       }
-    });
+    }));
 
     // 5. Listen to SP Tasks
-    const tasksQuery = query(collection(db, 'sp_tasks'), orderBy('addedAt', 'desc'));
-    onSnapshot(tasksQuery, (snapshot) => {
+    const tasksQuery = query(shopCol('sp_tasks'), orderBy('addedAt', 'desc'));
+    activeUnsubscribers.push(onSnapshot(tasksQuery, (snapshot) => {
       spTasks = snapshot.docs.map(doc => {
         const data = doc.data();
         return { ...data, id: doc.id } as unknown as SPTask;
@@ -142,11 +220,11 @@ const initStore = () => {
       notify();
     }, (error) => {
       console.warn("SP Tasks sync failed", error);
-    });
+    }));
 
     // 6. Listen to Cash Deductions
-    const deductionsQuery = query(collection(db, 'cash_deductions'), orderBy('date', 'desc'));
-    onSnapshot(deductionsQuery, (snapshot) => {
+    const deductionsQuery = query(shopCol('cash_deductions'), orderBy('date', 'desc'));
+    activeUnsubscribers.push(onSnapshot(deductionsQuery, (snapshot) => {
       cashDeductions = snapshot.docs.map(doc => {
         const data = doc.data();
         return { ...data, id: doc.id, firestoreId: doc.id } as unknown as CashDeduction;
@@ -155,7 +233,7 @@ const initStore = () => {
       notify();
     }, (error) => {
       console.warn("Cash Deductions sync failed", error);
-    });
+    }));
 
   } catch (err) {
     console.error("Error initializing Firestore listeners:", err);
@@ -163,15 +241,24 @@ const initStore = () => {
   }
 };
 
-// Start listening immediately
-try {
-  initStore();
-} catch (e) {
-  console.error("Firebase initialization error.", e);
-  isOffline = true;
-}
+// NOTE: initStore() is no longer called on module load.
+// It must be called after shopId is set via store.setShopId().
 
 export const store = {
+  // --- MULTI-TENANT ---
+  getShopId: () => currentShopId,
+  setShopId: (shopId: string) => {
+    currentShopId = shopId;
+  },
+  reinitStore: () => {
+    try {
+      initStore();
+    } catch (e) {
+      console.error("Firebase initialization error.", e);
+      isOffline = true;
+    }
+  },
+
   getBills: () => bills,
   getRecentBills: () => {
     return [...bills]
@@ -289,17 +376,16 @@ export const store = {
     // For local state, we might want to keep the snapshotData if we want to view it immediately?
     // But store.bills usually mirrors the 'light' version.
     // Let's keep it light in memory too to avoid performance issues.
-    bills = [billToSave, ...bills];
+    bills = deduplicateBills([billToSave, ...bills]);
     saveLocal(STORAGE_KEYS.BILLS, bills);
 
     // Update local product stock immediately
     bill.items.forEach(item => {
-      const pIndex = products.findIndex(p => p.id === item.id);
-      if (pIndex > -1) {
-        products[pIndex].stock -= item.quantity;
-      }
+      const currentStock = localInventory[item.id] !== undefined ? localInventory[item.id] : 50;
+      localInventory[item.id] = currentStock - item.quantity;
     });
-    saveLocal(STORAGE_KEYS.PRODUCTS, products);
+    computeProducts();
+    saveLocal(STORAGE_KEYS.LOCAL_INVENTORY, localInventory);
 
     // Update local customer stats immediately
     const cIndex = customers.findIndex(c => c.name === bill.customerName);
@@ -318,27 +404,13 @@ export const store = {
       const batch = writeBatch(db);
 
       // A. Save Bill
-      const billRef = doc(collection(db, 'bills')); // Auto-ID or use bill.id?
-      // The bill object usually has an ID from the frontend.
-      // If bill.id is set (INV-...), we should probably use that as document ID or just a field?
-      // Existing code used addDoc which generates a new ID.
-      // But we need the ID to link the snapshot.
-      // Let's use setDoc with the bill.id if possible, OR use the generated ID.
-      // Since existing code used addDoc, let's stick to that pattern BUT we need the ID for the snapshot.
-      // Actually, let's use the bill.id (INV-...) as the document ID for the snapshot.
-      // But wait, Firestore IDs must be unique. INV IDs are unique.
-
-      // Let's use addDoc for the bill as before to be safe with existing logic,
-      // BUT we need to link the snapshot.
-      // The bill has an 'id' field (e.g. INV-2024-001). We can use that.
-
-      await addDoc(collection(db, 'bills'), billToSave);
+      await addDoc(shopCol('bills'), billToSave);
 
       // B. Save Snapshot (if exists)
       if (snapshotDataToSave) {
         // Use the Bill's visible ID (e.g. INV-2024-001) as the key for the snapshot document
         // This makes it easy to find.
-        const snapshotRef = doc(db, 'bill_snapshots', bill.id);
+        const snapshotRef = shopDocRef('bill_snapshots', bill.id);
         batch.set(snapshotRef, {
           billId: bill.id,
           image: snapshotDataToSave,
@@ -349,7 +421,7 @@ export const store = {
       // C. Update Customer Stats
       const customer = customers.find(c => c.name === bill.customerName);
       if (customer && (customer as any).firestoreId) {
-        const customerRef = doc(db, 'customers', (customer as any).firestoreId);
+        const customerRef = shopDocRef('customers', (customer as any).firestoreId);
         batch.update(customerRef, {
           totalSpEarned: (customer.totalSpEarned || 0) + bill.totalSp,
           lastVisit: bill.date
@@ -388,11 +460,8 @@ export const store = {
 
         // Let's ensure strict atomic updates in cloud. 
         // The code below IS using atomic increment.
-        const product = products.find(p => p.id === item.id);
-        if (product) {
-          const productRef = doc(db, 'products', product.id);
-          batch.update(productRef, { stock: increment(-item.quantity) });
-        }
+        const invRef = shopDocRef('inventory', item.id);
+        batch.set(invRef, { stock: increment(-item.quantity) }, { merge: true });
       });
 
       await batch.commit();
@@ -410,12 +479,11 @@ export const store = {
 
     // 2. Revert Stock (Add back)
     bill.items.forEach(item => {
-      const pIndex = products.findIndex(p => p.id === item.id);
-      if (pIndex > -1) {
-        products[pIndex].stock += item.quantity;
-      }
+      const currentStock = localInventory[item.id] !== undefined ? localInventory[item.id] : 50;
+      localInventory[item.id] = currentStock + item.quantity;
     });
-    saveLocal(STORAGE_KEYS.PRODUCTS, products);
+    computeProducts();
+    saveLocal(STORAGE_KEYS.LOCAL_INVENTORY, localInventory);
 
     // 3. Revert Customer Stats
     const cIndex = customers.findIndex(c => c.name === bill.customerName);
@@ -438,24 +506,22 @@ export const store = {
       // Delete Bill
       const firestoreId = (bill as any).firestoreId;
       if (firestoreId) {
-        batch.delete(doc(db, 'bills', firestoreId));
+        batch.delete(shopDocRef('bills', firestoreId));
       }
 
       // Delete Snapshot
-      batch.delete(doc(db, 'bill_snapshots', bill.id));
+      batch.delete(shopDocRef('bill_snapshots', bill.id));
 
       // Update Products
       bill.items.forEach(item => {
-        const product = products.find(p => p.id === item.id);
-        if (product) {
-          batch.update(doc(db, 'products', product.id), { stock: product.stock });
-        }
+        const invRef = shopDocRef('inventory', item.id);
+        batch.set(invRef, { stock: localInventory[item.id] }, { merge: true });
       });
 
       // Update Customer
       if (cIndex > -1) {
         const customer = customers[cIndex];
-        const cRef = (customer as any).firestoreId ? doc(db, 'customers', (customer as any).firestoreId) : null;
+        const cRef = (customer as any).firestoreId ? shopDocRef('customers', (customer as any).firestoreId) : null;
         if (cRef) {
           batch.update(cRef, { totalSpEarned: customer.totalSpEarned });
         }
@@ -480,20 +546,18 @@ export const store = {
 
     // 2. Revert stock for old items
     oldBill.items.forEach(item => {
-      const pIndex = products.findIndex(p => p.id === item.id);
-      if (pIndex > -1) {
-        products[pIndex].stock += item.quantity;
-      }
+      const currentStock = localInventory[item.id] !== undefined ? localInventory[item.id] : 50;
+      localInventory[item.id] = currentStock + item.quantity;
     });
 
     // 3. Deduct stock for new items
     updatedBill.items.forEach(item => {
-      const pIndex = products.findIndex(p => p.id === item.id);
-      if (pIndex > -1) {
-        products[pIndex].stock -= item.quantity;
-      }
+      const currentStock = localInventory[item.id] !== undefined ? localInventory[item.id] : 50;
+      localInventory[item.id] = currentStock - item.quantity;
     });
-    saveLocal(STORAGE_KEYS.PRODUCTS, products);
+
+    computeProducts();
+    saveLocal(STORAGE_KEYS.LOCAL_INVENTORY, localInventory);
 
     // 4. Update Customer Stats
     // Revert old stats
@@ -533,13 +597,13 @@ export const store = {
       // Update Bill
       const firestoreId = (billToSave as any).firestoreId;
       if (firestoreId) {
-        const billRef = doc(db, 'bills', firestoreId);
+        const billRef = shopDocRef('bills', firestoreId);
         batch.update(billRef, billToSave);
       }
 
       // Update Snapshot if changed
       if (snapshotDataToSave) {
-        const snapshotRef = doc(db, 'bill_snapshots', updatedBill.id);
+        const snapshotRef = shopDocRef('bill_snapshots', updatedBill.id);
         batch.set(snapshotRef, {
           billId: updatedBill.id,
           image: snapshotDataToSave,
@@ -554,20 +618,17 @@ export const store = {
       ]);
 
       affectedProductIds.forEach(pid => {
-        const product = products.find(p => p.id === pid);
-        if (product) {
-          const pRef = doc(db, 'products', pid);
-          batch.update(pRef, { stock: product.stock });
-        }
+        const invRef = shopDocRef('inventory', pid);
+        batch.set(invRef, { stock: localInventory[pid] }, { merge: true });
       });
 
       // Update Customer (Cloud)
       if (cIndex > -1 && customers[cIndex] && (customers[cIndex] as any).firestoreId) {
-        const cRef = doc(db, 'customers', (customers[cIndex] as any).firestoreId);
+        const cRef = shopDocRef('customers', (customers[cIndex] as any).firestoreId);
         batch.update(cRef, { totalSpEarned: customers[cIndex].totalSpEarned });
       }
       if (newCIndex > -1 && newCIndex !== cIndex && customers[newCIndex] && (customers[newCIndex] as any).firestoreId) {
-        const cRef = doc(db, 'customers', (customers[newCIndex] as any).firestoreId);
+        const cRef = shopDocRef('customers', (customers[newCIndex] as any).firestoreId);
         batch.update(cRef, {
           totalSpEarned: customers[newCIndex].totalSpEarned,
           lastVisit: customers[newCIndex].lastVisit
@@ -596,7 +657,7 @@ export const store = {
       if (isOffline || !db) return;
       const bill = bills[billIndex];
       if ((bill as any).firestoreId) {
-        const billRef = doc(db, 'bills', (bill as any).firestoreId);
+        const billRef = shopDocRef('bills', (bill as any).firestoreId);
         try {
           await updateDoc(billRef, { items: updatedItems });
         } catch (error) {
@@ -640,7 +701,7 @@ export const store = {
       // 2. Cloud Update
       if (isOffline || !db) return;
       if ((bill as any).firestoreId) {
-        const billRef = doc(db, 'bills', (bill as any).firestoreId);
+        const billRef = shopDocRef('bills', (bill as any).firestoreId);
         try {
           await updateDoc(billRef, { items: updatedItems });
         } catch (error) {
@@ -688,7 +749,7 @@ export const store = {
       // 2. Cloud Update
       if (isOffline || !db) return;
       if ((bill as any).firestoreId) {
-        const billRef = doc(db, 'bills', (bill as any).firestoreId);
+        const billRef = shopDocRef('bills', (bill as any).firestoreId);
         try {
           await updateDoc(billRef, { items: updatedItems });
         } catch (error) {
@@ -706,7 +767,7 @@ export const store = {
 
     if (isOffline || !db) return;
     try {
-      await addDoc(collection(db, 'customers'), customer);
+      await addDoc(shopCol('customers'), customer);
     } catch (error) {
       console.warn("Cloud sync failed (Customer saved locally)", error);
     }
@@ -729,7 +790,7 @@ export const store = {
       const firestoreId = (updatedCustomer as any).firestoreId;
       if (firestoreId) {
         try {
-          const customerRef = doc(db, 'customers', firestoreId);
+          const customerRef = shopDocRef('customers', firestoreId);
           await updateDoc(customerRef, { ...updatedCustomer } as any);
         } catch (error) {
           console.warn("Cloud sync failed (Customer update)", error);
@@ -753,7 +814,7 @@ export const store = {
     const firestoreId = (customer as any).firestoreId;
     if (firestoreId) {
       try {
-        await deleteDoc(doc(db, 'customers', firestoreId));
+        await deleteDoc(shopDocRef('customers', firestoreId));
       } catch (e) {
         console.warn("Cloud delete failed", e);
       }
@@ -764,13 +825,25 @@ export const store = {
     // 1. Local Update
     const tempId = `prod-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
     const newProduct = { ...product, id: tempId };
-    products = [...products, newProduct];
-    saveLocal(STORAGE_KEYS.PRODUCTS, products);
+    globalProducts = [...globalProducts, newProduct as Product];
+
+    // Set local inventory immediately if a specific stock is provided
+    if (product.stock !== undefined && product.stock !== 50) {
+      localInventory[tempId] = product.stock;
+      saveLocal(STORAGE_KEYS.LOCAL_INVENTORY, localInventory);
+    }
+
+    computeProducts();
     notify();
 
     if (isOffline || !db) return;
     try {
-      await addDoc(collection(db, 'products'), product);
+      const { stock, ...productData } = product as any;
+      const docRef = await addDoc(collection(db, 'products'), productData);
+
+      if (stock !== undefined && stock !== 50) {
+        await setDoc(shopDocRef('inventory', docRef.id), { stock });
+      }
     } catch (error) {
       console.warn("Cloud sync failed (Product saved locally)", error);
     }
@@ -778,31 +851,38 @@ export const store = {
 
   updateProduct: async (updatedProduct: Product) => {
     // 1. Local Update
-    const index = products.findIndex(p => p.id === updatedProduct.id);
-    if (index > -1) {
-      products[index] = updatedProduct;
-      saveLocal(STORAGE_KEYS.PRODUCTS, products);
+    const index = globalProducts.findIndex(p => p.id === updatedProduct.id);
+    if (index > -1 || updatedProduct.id.includes('imported-')) {
+      if (index > -1) {
+        globalProducts[index] = updatedProduct;
+      } else {
+        globalProducts.push(updatedProduct);
+      }
+
+      localInventory[updatedProduct.id] = updatedProduct.stock;
+      saveLocal(STORAGE_KEYS.LOCAL_INVENTORY, localInventory);
+      computeProducts();
       notify();
 
       if (isOffline || !db) return;
 
-      // Skip cloud update for temp IDs (only 'prod-' which awaits a real Firestore ID)
-      // We ALLOW 'imported-' IDs because bulkUpsert explicitly uses them as Firestore Document keys.
+      // Skip cloud update for temp IDs
       if (updatedProduct.id.includes('prod-')) {
-        console.warn("Skipping cloud update for locally created ID (wait for sync)");
+        console.warn("Skipping cloud update for locally created ID");
         return;
       }
 
       try {
+        const { id, stock, ...productData } = updatedProduct as any;
+
+        // Update global catalog
         const productRef = doc(db, 'products', updatedProduct.id);
-        await updateDoc(productRef, {
-          name: updatedProduct.name,
-          category: updatedProduct.category,
-          mrp: updatedProduct.mrp,
-          dp: updatedProduct.dp,
-          sp: updatedProduct.sp,
-          stock: updatedProduct.stock
-        });
+        await setDoc(productRef, productData, { merge: true });
+
+        // Update local inventory override
+        const inventoryRef = shopDocRef('inventory', updatedProduct.id);
+        await setDoc(inventoryRef, { stock }, { merge: true });
+
       } catch (error) {
         console.warn("Cloud sync failed (Product update)", error);
       }
@@ -811,14 +891,24 @@ export const store = {
 
   deleteProduct: async (id: string) => {
     // 1. Local
-    products = products.filter(p => p.id !== id);
-    saveLocal(STORAGE_KEYS.PRODUCTS, products);
+    globalProducts = globalProducts.filter(p => p.id !== id);
+    delete localInventory[id];
+    saveLocal(STORAGE_KEYS.LOCAL_INVENTORY, localInventory);
+    computeProducts();
     notify();
 
     // 2. Cloud
     if (isOffline || !db) return;
+    if (id.includes('prod-')) return;
+
     try {
+      // Global catalog deletion
       await deleteDoc(doc(db, 'products', id));
+
+      // Local inventory cleanup
+      if (currentShopId) {
+        await deleteDoc(shopDocRef('inventory', id));
+      }
     } catch (e) {
       console.warn("Cloud delete failed", e);
     }
@@ -826,14 +916,17 @@ export const store = {
 
   clearProducts: async () => {
     // 1. Local
-    products = [];
-    saveLocal(STORAGE_KEYS.PRODUCTS, products);
+    globalProducts = [];
+    localInventory = {};
+    saveLocal(STORAGE_KEYS.GLOBAL_PRODUCTS, globalProducts);
+    saveLocal(STORAGE_KEYS.LOCAL_INVENTORY, localInventory);
+    computeProducts();
     notify();
 
     // 2. Cloud
     if (isOffline || !db) return;
     try {
-      const snapshot = await getDocs(collection(db, 'products'));
+      const snapshot = await getDocs(shopCol('products'));
 
       // Batch delete in chunks of 400 (Firestore limit is 500)
       const chunk = 400;
@@ -858,7 +951,7 @@ export const store = {
     // 2. Cloud Update
     if (isOffline || !db) return;
     try {
-      const settingsRef = doc(db, 'settings', 'general');
+      const settingsRef = shopSettingsDoc();
       // setDoc with merge: true handles both creation and update
       await setDoc(settingsRef, newSettings, { merge: true });
     } catch (e) {
@@ -891,7 +984,7 @@ export const store = {
 
         // Cloud Update
         if (batch) {
-          const ref = doc(db, 'products', existingProduct.id);
+          const ref = shopDocRef('products', existingProduct.id);
           batch.update(ref, { mrp: item.mrp, dp: item.dp, sp: item.sp, category: item.category });
         }
       } else {
@@ -905,7 +998,7 @@ export const store = {
 
         // Cloud Update
         if (batch) {
-          const ref = doc(db, 'products', newId);
+          const ref = shopDocRef('products', newId);
           batch.set(ref, newProduct);
         }
       }
@@ -1041,9 +1134,9 @@ export const store = {
     // 3. Clear Cloud (if permissions allow)
     if (includeCloud && !isOffline && db) {
       try {
-        const billsSnap = await getDocs(collection(db, 'bills'));
-        const custSnap = await getDocs(collection(db, 'customers'));
-        const prodSnap = await getDocs(collection(db, 'products'));
+        const billsSnap = await getDocs(shopCol('bills'));
+        const custSnap = await getDocs(shopCol('customers'));
+        const prodSnap = await getDocs(shopCol('products'));
 
         const deletePromises = [
           ...billsSnap.docs.map(d => deleteDoc(d.ref)),
@@ -1089,14 +1182,14 @@ export const store = {
       const batch = writeBatch(db);
 
       // A. Create Task Doc
-      const taskRef = doc(db, 'sp_tasks', task.id);
+      const taskRef = shopDocRef('sp_tasks', task.id);
       batch.set(taskRef, task);
 
       // B. Update Bills
       task.billIds.forEach(id => {
         const bill = bills.find(b => b.id === id);
         if (bill && (bill as any).firestoreId) {
-          const billRef = doc(db, 'bills', (bill as any).firestoreId);
+          const billRef = shopDocRef('bills', (bill as any).firestoreId);
           batch.update(billRef, { spTracking: { taskId: task.id, status: 'Pending' } });
         }
       });
@@ -1135,14 +1228,14 @@ export const store = {
     if (isOffline || !db) return;
     try {
       const batch = writeBatch(db);
-      const taskRef = doc(db, 'sp_tasks', taskId);
+      const taskRef = shopDocRef('sp_tasks', taskId);
       batch.update(taskRef, updates);
 
       if (updates.status) {
         newTask.billIds.forEach(id => {
           const bill = bills.find(b => b.id === id);
           if (bill && (bill as any).firestoreId) {
-            const billRef = doc(db, 'bills', (bill as any).firestoreId);
+            const billRef = shopDocRef('bills', (bill as any).firestoreId);
             batch.update(billRef, { 'spTracking.status': updates.status });
           }
         });
@@ -1180,13 +1273,13 @@ export const store = {
       const batch = writeBatch(db);
 
       // Delete task doc
-      batch.delete(doc(db, 'sp_tasks', taskId));
+      batch.delete(shopDocRef('sp_tasks', taskId));
 
       // Update bills
       task.billIds.forEach(id => {
         const bill = bills.find(b => b.id === id);
         if (bill && (bill as any).firestoreId) {
-          const billRef = doc(db, 'bills', (bill as any).firestoreId);
+          const billRef = shopDocRef('bills', (bill as any).firestoreId);
           batch.update(billRef, { spTracking: deleteField() });
         }
       });
@@ -1201,7 +1294,7 @@ export const store = {
   getCashDeductions: () => cashDeductions,
 
   getTodayCashDeductions: () => {
-    const today = new Date().toISOString().split('T')[0];
+    const today = getLocalDateString();
     return cashDeductions.filter(d => d.date === today);
   },
 
@@ -1219,7 +1312,7 @@ export const store = {
     // Cloud sync
     if (isOffline || !db) return;
     try {
-      await addDoc(collection(db, 'cash_deductions'), newDeduction);
+      await addDoc(shopCol('cash_deductions'), newDeduction);
     } catch (e) {
       console.warn('Cloud sync failed (deduction saved locally)', e);
     }
@@ -1240,7 +1333,7 @@ export const store = {
     const firestoreId = (deduction as any).firestoreId;
     if (firestoreId) {
       try {
-        await deleteDoc(doc(db, 'cash_deductions', firestoreId));
+        await deleteDoc(shopDocRef('cash_deductions', firestoreId));
       } catch (e) {
         console.warn('Cloud delete failed', e);
       }

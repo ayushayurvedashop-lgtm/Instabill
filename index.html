@@ -4,7 +4,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-  <title>Ayush Ayurveda - Wellness Management</title>
+  <title>Instabill - Smart Billing Platform</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script>
     tailwind.config = {
@@ -12,21 +12,30 @@
         extend: {
           fontFamily: {
             sans: ['Inter', 'sans-serif'],
+            heading: ['Montserrat', 'sans-serif'],
           },
           colors: {
+            brand: {
+              white: '#ffffff',
+              light: '#daf4d7',
+              accent: '#88de7d',
+              dark: '#21776a',
+              black: '#111617'
+            },
             lime: {
-              300: '#bef264',
-              400: '#a3e635',
-              500: '#84cc16',
+              300: '#daf4d7',
+              400: '#88de7d',
+              500: '#88de7d',
             },
             // Custom palette based on reference
-            primary: '#cbf382', // The bright lime accent
-            'primary-hover': '#bce870',
-            dark: '#132c25',    // The dark forest green text/bg
-            'dark-light': '#1f423a',
+            primary: '#88de7d', // The green accent
+            'primary-hover': '#72cb67', // Slightly darker green for hover
+            'primary-light': '#daf4d7', // Light green for panels/hover
+            dark: '#111617',    // Very dark teal/black text
+            'dark-light': '#21776a', // Dark teal
             subtle: '#9ca3af',
-            bg: '#f3f5f2',      // The main light gray/green background
-            surface: '#ffffff',
+            bg: '#F3F5F2',      // Main background
+            surface: '#ffffff', // White surface
           },
           borderRadius: {
             '3xl': '1.5rem',
@@ -53,7 +62,7 @@
               '100%': { opacity: '1', transform: 'scale(1)' },
             },
             slideInRight: {
-              '0%': { opacity: '0', transform: 'translateX(20px)' },
+              '0%': { opacity: '0', transform: 'translateX(100%)' },
               '100%': { opacity: '1', transform: 'translateX(0)' },
             },
             bounceSubtle: {
@@ -67,7 +76,7 @@
             'slide-down': 'slideDown 0.6s ease-out forwards',
             'scale-in': 'scaleIn 0.4s ease-out forwards',
             'modal-in': 'modalIn 0.2s ease-out forwards',
-            'slide-in-right': 'slideInRight 0.5s ease-out forwards',
+            'slide-in-right': 'slideInRight 0.35s cubic-bezier(0.4, 0, 0.2, 1) forwards',
             'bounce-subtle': 'bounceSubtle 2s infinite ease-in-out',
           }
         }
@@ -75,6 +84,8 @@
     }
   </script>
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap"
+    rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800;900&display=swap"
     rel="stylesheet">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
   <script type="importmap">
@@ -100,7 +111,7 @@
 
 </head>
 
-<body class="bg-black text-dark font-sans antialiased selection:bg-primary selection:text-dark">
+<body class="bg-bg text-dark font-sans antialiased selection:bg-primary selection:text-dark">
   <div id="root"></div>
   <script type="module" src="/index.tsx"></script>
 </body>

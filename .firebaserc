@@ -1,5 +1,17 @@
 {
   "projects": {
     "default": "ayush-ayurveda-8623a"
+  },
+  "targets": {
+    "ayush-ayurveda-8623a": {
+      "hosting": {
+        "app": [
+          "ayush-ayurveda-8623a"
+        ],
+        "admin": [
+          "vedabill-admin"
+        ]
+      }
+    }
   }
 }

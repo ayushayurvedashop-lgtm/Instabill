@@ -33,7 +33,7 @@ var __importStar = (this && this.__importStar) || (function () {
     };
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.sendWhatsappNotification = exports.getSpeechmaticsToken = exports.getDeepgramApiKey = void 0;
+exports.resetShopPassword = exports.sendSPDoneNotification = exports.sendProductUpdateNotification = exports.sendWhatsappNotification = exports.getSpeechmaticsToken = exports.getDeepgramApiKey = void 0;
 const https_1 = require("firebase-functions/v2/https");
 const logger = __importStar(require("firebase-functions/logger"));
 const admin = __importStar(require("firebase-admin"));
@@ -81,95 +81,87 @@ exports.getSpeechmaticsToken = (0, https_1.onCall)({ cors: true }, async (reques
     }
 });
 exports.sendWhatsappNotification = (0, https_1.onCall)({ cors: true }, async (request) => {
-    // 1. Validate Auth & Inputs
-    // MSG91 Credentials
-    const authKey = "489901AythCbMOfajU6973c03eP1";
-    const integratedNumber = "15558365545";
-    const templateName = "bill_notification";
-    const { destination, billReference, updateMessage, billUrl } = request.data;
-    const storageBaseUrl = "https://firebasestorage.googleapis.com/v0/b/ayush-ayurveda-8623a.firebasestorage.app/o/";
-    // --- STRICT VALIDATION ---
-    // 1. Check for required non-empty string fields
-    if (!destination || typeof destination !== 'string' || !destination.trim()) {
-        logger.error("Invalid Destination:", destination);
-        throw new https_1.HttpsError('invalid-argument', "Validation Error: Destination cannot be empty");
-    }
-    if (!billReference || typeof billReference !== 'string' || !billReference.trim()) {
-        logger.error("Invalid BillReference:", billReference);
-        throw new https_1.HttpsError('invalid-argument', "Validation Error: Bill Reference cannot be empty");
-    }
-    if (!updateMessage || typeof updateMessage !== 'string' || !updateMessage.trim()) {
-        logger.error("Invalid UpdateMessage:", updateMessage);
-        throw new https_1.HttpsError('invalid-argument', "Validation Error: Update Message cannot be empty");
-    }
-    // 2. Strict Bill URL Validation
-    if (!billUrl || typeof billUrl !== 'string' || !billUrl.trim()) {
-        logger.error("Invalid BillURL (Empty/Null/Type):", billUrl);
-        throw new https_1.HttpsError('invalid-argument', "Validation Error: Bill URL is invalid or empty");
-    }
-    // 3. Ensure Bill URL matches the expected Storage format to allow stripping
-    if (!billUrl.startsWith(storageBaseUrl)) {
-        logger.error("Invalid BillURL Format:", billUrl, "Expected prefix:", storageBaseUrl);
-        // We reject unexpected URLs to prevent sending bad links that won't work with the template's hardcoded base
-        throw new https_1.HttpsError('invalid-argument', "Validation Error: Bill URL does not match expected Firebase Storage format");
-    }
-    // --- END VALIDATION ---
-    // 4. Log params for debugging
-    logger.info("WhatsApp Request Params Validated (MSG91):", { destination, billReference, updateMessage });
-    // 5. Transform URL
-    // User requested full URL format. We do NOT strip the base URL.
-    const finalBillUrlParam = billUrl;
-    // Safety check: Ensure it looks like a URL
-    if (!finalBillUrlParam || !finalBillUrlParam.startsWith('http')) {
-        logger.error("BillURL Invalid:", finalBillUrlParam);
-        throw new https_1.HttpsError('internal', "Validation Error: Bill URL must be a valid http link");
-    }
-    // 6. Prepare MSG91 Payload
-    const payload = {
-        integrated_number: integratedNumber,
-        content_type: "template",
-        payload: {
-            type: "template",
-            template: {
-                name: templateName,
-                language: {
-                    code: "en",
-                    policy: "deterministic"
-                },
-                to_and_components: [
+    logger.info("--- START sendWhatsappNotification ---");
+    try {
+        // 1. MSG91 Credentials & Config (set MSG91_AUTH_KEY in Firebase config for production)
+        const authKey = process.env.MSG91_AUTH_KEY || "489901AythCbMOfajU6973c03eP1";
+        const defaultShopName = "Ayush Ayurveda";
+        const { destination, billReference, billUrl, totalAmount, totalSp, isUpdate } = request.data;
+        // Campaign slugs: bill-generated1 for new bills, bill-updated1 for updates
+        const campaignSlug = isUpdate ? "bill-updated1" : "bill-generated1";
+        logger.info("Inputs received:", { destination, billReference, billUrl, totalAmount, totalSp, isUpdate, campaignSlug });
+        // --- STRICT VALIDATION ---
+        if (!destination || typeof destination !== 'string' || !destination.trim()) {
+            logger.error("Invalid Destination:", destination);
+            throw new https_1.HttpsError('invalid-argument', "Validation Error: Destination cannot be empty");
+        }
+        if (!billReference) {
+            logger.error("Invalid BillReference:", billReference);
+            throw new https_1.HttpsError('invalid-argument', "Validation Error: Bill Reference cannot be empty");
+        }
+        if (!billUrl || typeof billUrl !== 'string' || !billUrl.trim()) {
+            logger.error("Invalid BillURL:", billUrl);
+            throw new https_1.HttpsError('invalid-argument', "Validation Error: Bill URL is invalid or empty");
+        }
+        // 2. Map to template placeholders:
+        // body_1 = Shop name (e.g., "Ayush Ayurveda")
+        // body_2 = Bill Number (e.g., "#617")
+        // body_3 = Amount | SP (e.g., "₹765,000 | 32")
+        // button_1 = path after /o/ for PDF URL (only for bill-generated1)
+        const billNumber = (typeof billReference === 'string' && billReference.startsWith('#')) ? billReference : `#${billReference}`;
+        // Format amount and SP for body_3
+        const formattedAmount = totalAmount ? `₹${Number(totalAmount).toLocaleString('en-IN')}` : '₹0';
+        const formattedSp = totalSp ? Math.round(Number(totalSp) * 100) / 100 : 0;
+        const amountSpInfo = `${formattedAmount} | ${formattedSp}`;
+        // Template URL is .../o/{{1}} → pass only the path part (e.g. bills%2Fxyz.pdf?alt=media&token=...)
+        const oIndex = billUrl.indexOf("/o/");
+        const buttonPath = oIndex >= 0 ? billUrl.substring(oIndex + 3) : billUrl;
+        // 3. Prepare MSG91 Campaign Payload with new variable format
+        // bill-generated1: body_1 (shop), body_2 (bill no), body_3 (amount|sp), button_1 (path)
+        // bill-updated1: body_1 (shop), body_2 (bill no), body_3 (amount|sp) - no button
+        const variables = {
+            "body_1": {
+                "type": "text",
+                "value": defaultShopName
+            },
+            "body_2": {
+                "type": "text",
+                "value": billNumber
+            },
+            "body_3": {
+                "type": "text",
+                "value": amountSpInfo
+            }
+        };
+        // Only add button_1 for bill-generated1 template
+        if (!isUpdate) {
+            variables["button_1"] = {
+                "type": "text",
+                "value": buttonPath
+            };
+        }
+        const payload = {
+            data: {
+                sendTo: [
                     {
-                        to: [destination],
-                        components: {
-                            body_1: {
-                                type: "text",
-                                value: billReference.replace('##', '#')
-                            },
-                            body_2: {
-                                type: "text",
-                                value: updateMessage
-                            },
-                            button_1: {
-                                subtype: "url",
-                                type: "text",
-                                value: finalBillUrlParam
+                        to: [
+                            {
+                                mobiles: destination,
+                                variables: variables
                             }
-                        }
+                        ]
                     }
                 ]
-            },
-            messaging_product: "whatsapp"
-        }
-    };
-    // DEBUG LOGGING
-    logger.info("MSG91 Payload Prepared:", JSON.stringify(payload));
-    logger.info("MSG91 Headers:", { authkey: "REDACTED", accept: 'application/json', 'content-type': 'application/json' });
-    try {
-        // 7. Send Request
-        // Append authkey to query string as fallback/primary method for authentication
-        const response = await fetch(`https://control.msg91.com/api/v5/whatsapp/whatsapp-outbound-message/bulk/?authkey=${authKey}`, {
+            }
+        };
+        logger.info("Payload to MSG91:", JSON.stringify(payload));
+        // 4. Send Request to Campaign Run API
+        const url = `https://control.msg91.com/api/v5/campaign/api/campaigns/${campaignSlug}/run`;
+        logger.info("Requesting URL:", url);
+        const response = await fetch(url, {
             method: 'POST',
             headers: {
-                'authkey': authKey, // Keep header just in case
+                'authkey': authKey,
                 'accept': 'application/json',
                 'content-type': 'application/json'
             },
@@ -177,13 +169,22 @@ exports.sendWhatsappNotification = (0, https_1.onCall)({ cors: true }, async (re
         });
         logger.info("MSG91 Response Status:", response.status);
         const responseText = await response.text();
-        logger.info("MSG91 Response Body:", responseText);
+        logger.info("MSG91 Response Text:", responseText);
         if (!response.ok) {
-            // Check for specific error codes or messages
-            logger.error("MSG91 API Error Detail:", { status: response.status, body: responseText });
-            throw new https_1.HttpsError('internal', `MSG91 Failed: ${responseText}`);
+            logger.error("MSG91 API Error Status:", response.status, responseText);
+            let hint = "";
+            if (response.status === 401) {
+                try {
+                    const err = JSON.parse(responseText);
+                    if (err.apiError === "418" || (err.errors && /unauthorized|418|whitelist/i.test(String(err.errors))))
+                        hint = " (Tip: 418 = IP not whitelisted. In MSG91 dashboard, disable IP restriction or whitelist your server IPs.)";
+                    else
+                        hint = " (Check: auth key is correct, has WhatsApp permission, and is not restricted.)";
+                }
+                catch (_) { /* ignore */ }
+            }
+            throw new Error(`MSG91 API returned ${response.status}: ${responseText}${hint}`);
         }
-        // 8. Return Success
         let data;
         try {
             data = JSON.parse(responseText);
@@ -191,12 +192,267 @@ exports.sendWhatsappNotification = (0, https_1.onCall)({ cors: true }, async (re
         catch (e) {
             data = { message: "Success", raw: responseText };
         }
-        logger.info("WhatsApp Sent Successfully (MSG91)", { destination, messageId: data === null || data === void 0 ? void 0 : data.messageId });
+        logger.info("--- SUCCESS sendWhatsappNotification ---");
         return { success: true, data };
     }
     catch (error) {
-        logger.error("WhatsApp Send Exception (MSG91)", { message: error.message, stack: error.stack });
-        throw new https_1.HttpsError('internal', `Failed to send WhatsApp message via MSG91: ${error.message}`);
+        logger.error("CRITICAL ERROR in sendWhatsappNotification:", {
+            message: error.message,
+            stack: error.stack,
+            fullError: error
+        });
+        if (error instanceof https_1.HttpsError) {
+            throw error;
+        }
+        throw new https_1.HttpsError('internal', `Function failed: ${error.message || 'Unknown error'}`);
+    }
+});
+// New function for Pending Products Updated notification
+exports.sendProductUpdateNotification = (0, https_1.onCall)({ cors: true }, async (request) => {
+    logger.info("--- START sendProductUpdateNotification ---");
+    try {
+        const authKey = process.env.MSG91_AUTH_KEY || "489901AythCbMOfajU6973c03eP1";
+        const campaignSlug = "pending-products-updated";
+        const defaultShopName = "Ayush Ayurveda";
+        const { destination, billReference, productsGiven, billUrl } = request.data;
+        logger.info("Inputs received:", { destination, billReference, productsGiven, billUrl });
+        // --- STRICT VALIDATION ---
+        if (!destination || typeof destination !== 'string' || !destination.trim()) {
+            logger.error("Invalid Destination:", destination);
+            throw new https_1.HttpsError('invalid-argument', "Validation Error: Destination cannot be empty");
+        }
+        if (!billReference) {
+            logger.error("Invalid BillReference:", billReference);
+            throw new https_1.HttpsError('invalid-argument', "Validation Error: Bill Reference cannot be empty");
+        }
+        if (!productsGiven || typeof productsGiven !== 'string' || !productsGiven.trim()) {
+            logger.error("Invalid productsGiven:", productsGiven);
+            throw new https_1.HttpsError('invalid-argument', "Validation Error: Products Given cannot be empty");
+        }
+        if (!billUrl || typeof billUrl !== 'string' || !billUrl.trim()) {
+            logger.error("Invalid BillURL:", billUrl);
+            throw new https_1.HttpsError('invalid-argument', "Validation Error: Bill URL is invalid or empty");
+        }
+        // Format bill reference
+        const billNumber = (typeof billReference === 'string' && billReference.startsWith('#')) ? billReference : `#${billReference}`;
+        // Template URL is .../o/{{1}} → pass only the path part
+        const oIndex = billUrl.indexOf("/o/");
+        const buttonPath = oIndex >= 0 ? billUrl.substring(oIndex + 3) : billUrl;
+        // Prepare MSG91 Campaign Payload
+        // body_1 = Shop name (e.g., "Ayush Ayurveda")
+        // body_2 = Bill No (e.g., "#655")
+        // body_3 = Updated Items (e.g., "Panchatulsi (2), Dentodoc (1)")
+        // button_1 = PDF path
+        const payload = {
+            data: {
+                sendTo: [
+                    {
+                        to: [
+                            {
+                                mobiles: destination,
+                                variables: {
+                                    "body_1": {
+                                        "type": "text",
+                                        "value": defaultShopName
+                                    },
+                                    "body_2": {
+                                        "type": "text",
+                                        "value": billNumber
+                                    },
+                                    "body_3": {
+                                        "type": "text",
+                                        "value": productsGiven
+                                    },
+                                    "button_1": {
+                                        "type": "text",
+                                        "value": buttonPath
+                                    }
+                                }
+                            }
+                        ]
+                    }
+                ]
+            }
+        };
+        logger.info("Payload to MSG91:", JSON.stringify(payload));
+        const url = `https://control.msg91.com/api/v5/campaign/api/campaigns/${campaignSlug}/run`;
+        logger.info("Requesting URL:", url);
+        const response = await fetch(url, {
+            method: 'POST',
+            headers: {
+                'authkey': authKey,
+                'accept': 'application/json',
+                'content-type': 'application/json'
+            },
+            body: JSON.stringify(payload)
+        });
+        logger.info("MSG91 Response Status:", response.status);
+        const responseText = await response.text();
+        logger.info("MSG91 Response Text:", responseText);
+        if (!response.ok) {
+            logger.error("MSG91 API Error Status:", response.status, responseText);
+            throw new Error(`MSG91 API returned ${response.status}: ${responseText}`);
+        }
+        let data;
+        try {
+            data = JSON.parse(responseText);
+        }
+        catch (e) {
+            data = { message: "Success", raw: responseText };
+        }
+        logger.info("--- SUCCESS sendProductUpdateNotification ---");
+        return { success: true, data };
+    }
+    catch (error) {
+        logger.error("CRITICAL ERROR in sendProductUpdateNotification:", {
+            message: error.message,
+            stack: error.stack,
+            fullError: error
+        });
+        if (error instanceof https_1.HttpsError) {
+            throw error;
+        }
+        throw new https_1.HttpsError('internal', `Function failed: ${error.message || 'Unknown error'}`);
+    }
+});
+// SP Done notification - sent when bill is marked complete in SP Manager
+exports.sendSPDoneNotification = (0, https_1.onCall)({ cors: true }, async (request) => {
+    logger.info("--- START sendSPDoneNotification ---");
+    try {
+        const authKey = process.env.MSG91_AUTH_KEY || "489901AythCbMOfajU6973c03eP1";
+        const campaignSlug = "sp-done";
+        const { destination, billReference, totalSp, billUrl } = request.data;
+        logger.info("Inputs received:", { destination, billReference, totalSp, billUrl });
+        // --- STRICT VALIDATION ---
+        if (!destination || typeof destination !== 'string' || !destination.trim()) {
+            logger.error("Invalid Destination:", destination);
+            throw new https_1.HttpsError('invalid-argument', "Validation Error: Destination cannot be empty");
+        }
+        if (!billReference) {
+            logger.error("Invalid BillReference:", billReference);
+            throw new https_1.HttpsError('invalid-argument', "Validation Error: Bill Reference cannot be empty");
+        }
+        if (!billUrl || typeof billUrl !== 'string' || !billUrl.trim()) {
+            logger.error("Invalid BillURL:", billUrl);
+            throw new https_1.HttpsError('invalid-argument', "Validation Error: Bill URL is invalid or empty");
+        }
+        // Format bill reference
+        const billNumber = (typeof billReference === 'string' && billReference.startsWith('#')) ? billReference : `#${billReference}`;
+        // Format SP value
+        const spValue = totalSp ? Math.round(Number(totalSp) * 100) / 100 : 0;
+        // Template URL is .../o/{{1}} → pass only the path part
+        const oIndex = billUrl.indexOf("/o/");
+        const buttonPath = oIndex >= 0 ? billUrl.substring(oIndex + 3) : billUrl;
+        // Prepare MSG91 Campaign Payload
+        // body_1 = Bill No (e.g., "#617")
+        // body_2 = Total SP Updated (e.g., "27")
+        // button_1 = PDF path
+        const payload = {
+            data: {
+                sendTo: [
+                    {
+                        to: [
+                            {
+                                mobiles: destination,
+                                variables: {
+                                    "body_1": {
+                                        "type": "text",
+                                        "value": billNumber
+                                    },
+                                    "body_2": {
+                                        "type": "text",
+                                        "value": String(spValue)
+                                    },
+                                    "button_1": {
+                                        "type": "text",
+                                        "value": buttonPath
+                                    }
+                                }
+                            }
+                        ]
+                    }
+                ]
+            }
+        };
+        logger.info("Payload to MSG91:", JSON.stringify(payload));
+        const url = `https://control.msg91.com/api/v5/campaign/api/campaigns/${campaignSlug}/run`;
+        logger.info("Requesting URL:", url);
+        const response = await fetch(url, {
+            method: 'POST',
+            headers: {
+                'authkey': authKey,
+                'accept': 'application/json',
+                'content-type': 'application/json'
+            },
+            body: JSON.stringify(payload)
+        });
+        logger.info("MSG91 Response Status:", response.status);
+        const responseText = await response.text();
+        logger.info("MSG91 Response Text:", responseText);
+        if (!response.ok) {
+            logger.error("MSG91 API Error Status:", response.status, responseText);
+            throw new Error(`MSG91 API returned ${response.status}: ${responseText}`);
+        }
+        let data;
+        try {
+            data = JSON.parse(responseText);
+        }
+        catch (e) {
+            data = { message: "Success", raw: responseText };
+        }
+        logger.info("--- SUCCESS sendSPDoneNotification ---");
+        return { success: true, data };
+    }
+    catch (error) {
+        logger.error("CRITICAL ERROR in sendSPDoneNotification:", {
+            message: error.message,
+            stack: error.stack,
+            fullError: error
+        });
+        if (error instanceof https_1.HttpsError) {
+            throw error;
+        }
+        throw new https_1.HttpsError('internal', `Function failed: ${error.message || 'Unknown error'}`);
+    }
+});
+// ============================================
+// Admin: Reset Shop Password
+// ============================================
+// Callable function that allows a super admin to change a shop's password.
+// Firebase client SDK cannot change another user's password, so this must be server-side.
+const SUPER_ADMIN_EMAILS = ["admin@veda.admin", "9423791137@veda.admin"];
+exports.resetShopPassword = (0, https_1.onCall)({ cors: true }, async (request) => {
+    logger.info("--- START resetShopPassword ---");
+    // 1. Verify caller is authenticated
+    if (!request.auth) {
+        throw new https_1.HttpsError('unauthenticated', 'Must be logged in');
+    }
+    // 2. Verify caller is a super admin
+    const callerEmail = request.auth.token.email || '';
+    if (!SUPER_ADMIN_EMAILS.includes(callerEmail)) {
+        logger.warn("Non-admin tried to reset password:", callerEmail);
+        throw new https_1.HttpsError('permission-denied', 'Only super admins can reset passwords');
+    }
+    // 3. Validate input
+    const { uid, newPassword } = request.data;
+    if (!uid || typeof uid !== 'string') {
+        throw new https_1.HttpsError('invalid-argument', 'Shop UID is required');
+    }
+    if (!newPassword || typeof newPassword !== 'string' || newPassword.length < 6) {
+        throw new https_1.HttpsError('invalid-argument', 'Password must be at least 6 characters');
+    }
+    // 4. Update the user's password
+    try {
+        await admin.auth().updateUser(uid, { password: newPassword });
+        logger.info(`Password reset successful for UID: ${uid}`);
+        return { success: true, message: 'Password updated successfully' };
+    }
+    catch (error) {
+        logger.error("Failed to reset password:", error);
+        if (error.code === 'auth/user-not-found') {
+            throw new https_1.HttpsError('not-found', 'User not found');
+        }
+        throw new https_1.HttpsError('internal', `Failed to reset password: ${error.message}`);
     }
 });
 //# sourceMappingURL=index.js.map

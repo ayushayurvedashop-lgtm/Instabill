@@ -29,8 +29,8 @@ export default defineConfig(({ mode }) => {
         registerType: 'autoUpdate',
         includeAssets: ['logo.png'],
         manifest: {
-          name: "Ayush Ayurveda",
-          short_name: "Ayush App",
+          name: "Instabill",
+          short_name: "Instabill",
           start_url: ".",
           display: "standalone",
           background_color: "#f3f5f2",

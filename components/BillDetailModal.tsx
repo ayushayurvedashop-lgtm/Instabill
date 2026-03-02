@@ -1,11 +1,15 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { X, ArrowRight, Package, CheckCircle2, AlertCircle, Loader, Printer, Edit, Trash2, Image as ImageIcon, History, ChevronLeft } from 'lucide-react';
+import { X, ArrowRight, Package, CheckCircle2, AlertCircle, Loader, Printer, Edit, Trash2, Image as ImageIcon, History, ChevronLeft, DollarSign } from 'lucide-react';
 import { store } from '../store';
 import { Bill } from '../types';
 import { db, storage } from '../firebaseConfig';
 import { doc, getDoc } from 'firebase/firestore';
 import { ref, getBlob } from 'firebase/storage';
 import { InvoiceModal } from './InvoiceModal';
+
+// Helper component to load image securely
+import PaymentManager from './PaymentManager';
+import ProductHandoverModal from './ProductHandoverModal';
 
 // Helper component to load image securely
 const SnapshotImage = ({ url, billId, hasSnapshot }: { url?: string, billId?: string, hasSnapshot?: boolean }) => {
@@ -70,11 +74,13 @@ interface BillDetailModalProps {
 
 const BillDetailModal: React.FC<BillDetailModalProps> = ({ bill, onClose, onEdit, isSpManagerContext }) => {
     const [showInvoiceModal, setShowInvoiceModal] = useState(false);
+    const [showPaymentManager, setShowPaymentManager] = useState(false);
     const [updateSpAmount, setUpdateSpAmount] = useState<number>(0);
     const [isUpdating, setIsUpdating] = useState(false);
     const [manualInputValue, setManualInputValue] = useState<string>('');
     const [isCtrlPressed, setIsCtrlPressed] = useState(false);
-    const [viewMode, setViewMode] = useState<'update' | 'history'>('update');
+    const [viewMode, setViewMode] = useState<'normal' | 'update' | 'history'>('normal');
+    const [showProductHandover, setShowProductHandover] = useState(false);
 
     // For Circular Progress
     const radius = 40;
@@ -85,9 +91,9 @@ const BillDetailModal: React.FC<BillDetailModalProps> = ({ bill, onClose, onEdit
             const remaining = Math.max(0, Math.round((bill.totalSp - (bill.spUpdatedAmount || 0)) * 1000) / 1000);
             setUpdateSpAmount(remaining); // Default to full remaining
             setManualInputValue(formatSp(remaining));
-            setViewMode('update');
+            setViewMode(isSpManagerContext ? 'update' : 'normal');
         }
-    }, [bill]);
+    }, [bill, isSpManagerContext]);
 
     // Track Ctrl key for slider snap behavior
     useEffect(() => {
@@ -136,7 +142,7 @@ const BillDetailModal: React.FC<BillDetailModalProps> = ({ bill, onClose, onEdit
                 spStatus: newUpdated >= bill.totalSp ? 'Completed' : 'Pending',
                 spHistory: newHistory
             });
-            onClose();
+            setViewMode('normal'); // Go back to normal mode instead of closing entirely
         } catch (e) {
             alert("Failed to update. Please try again.");
         } finally { setIsUpdating(false); }
@@ -197,26 +203,28 @@ const BillDetailModal: React.FC<BillDetailModalProps> = ({ bill, onClose, onEdit
     return (
         <>
             {showInvoiceModal && <InvoiceModal bill={bill} onClose={() => setShowInvoiceModal(false)} onEdit={() => { setShowInvoiceModal(false); onEdit?.(bill); onClose(); }} />}
+            {showPaymentManager && <PaymentManager bill={bill} onClose={() => setShowPaymentManager(false)} onUpdate={() => { /* implicit store update listeners will handle refresh, or we can close generic modal if needed */ }} />}
+            {showProductHandover && <ProductHandoverModal bill={bill} onClose={() => setShowProductHandover(false)} onUpdate={() => { }} />}
 
             {/* Backdrop */}
-            <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4 font-[Plus_Jakarta_Sans,sans-serif]" style={{ display: showInvoiceModal ? 'none' : 'flex' }}>
+            <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4 font-[Plus_Jakarta_Sans,sans-serif] animate-fade-in" style={{ display: showInvoiceModal || showPaymentManager || showProductHandover ? 'none' : 'flex' }}>
 
                 {/* Modal Container */}
                 <div className="bg-white rounded-3xl shadow-2xl w-[90vw] md:w-full max-w-[560px] relative overflow-hidden flex flex-col max-h-[75vh] md:max-h-[90vh] mb-24 md:mb-0">
 
                     {/* Close Button */}
-                    <button onClick={onClose} className="absolute top-5 right-5 text-gray-400 hover:text-gray-600 transition-colors z-10">
+                    <button onClick={onClose} className="absolute top-5 right-5 text-gray-400 hover:text-gray-600 transition-colors z-20 bg-white/50 backdrop-blur-sm rounded-full p-1">
                         <X size={24} />
                     </button>
 
-                    {showSpUpdater && isSpPending ? (
-                        /* V3 SP UPDATE UI */
+                    {(viewMode === 'update' || viewMode === 'history') ? (
+                        /* V3 SP UPDATE & HISTORY UI */
                         <>
                             {/* Header Section */}
                             <div className="p-5 pb-3 md:p-8 md:pb-4 flex items-start justify-between border-b border-gray-100">
                                 <div className="flex-1 pr-6">
                                     <div className="flex items-center gap-3 mb-2">
-                                        <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-lg ${bill.isPaid ? 'bg-emerald-100 text-emerald-600' : 'bg-red-50 text-red-400'}`}>
+                                        <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-lg ${bill.isPaid ? 'bg-success/20 text-success-hover' : 'bg-red-50 text-red-400'}`}>
                                             {bill.isPaid ? <CheckCircle2 size={24} /> : '!'}
                                         </div>
                                         <div>
@@ -226,19 +234,24 @@ const BillDetailModal: React.FC<BillDetailModalProps> = ({ bill, onClose, onEdit
                                     </div>
 
                                     {viewMode === 'update' ? (
-                                        <p className="text-sm text-gray-500 mt-4 leading-relaxed">
-                                            Update the SP (Service Points) progress for this client.
+                                        <p className="text-sm text-gray-500 mt-4 leading-relaxed flex items-center gap-2">
+                                            {!isSpManagerContext && (
+                                                <button onClick={() => setViewMode('normal')} className="text-gray-400 hover:text-gray-600 transition-colors shrink-0">
+                                                    <ChevronLeft size={18} />
+                                                </button>
+                                            )}
+                                            Update the SP progress for this client.
                                             <button
                                                 onClick={() => setViewMode('history')}
-                                                className="text-emerald-600 font-semibold cursor-pointer hover:underline ml-1 focus:outline-none"
+                                                className="text-[#88de7d] font-semibold cursor-pointer hover:underline ml-1 focus:outline-none"
                                             >
-                                                View History
+                                                History
                                             </button>
                                         </p>
                                     ) : (
                                         <button
                                             onClick={() => setViewMode('update')}
-                                            className="text-sm text-gray-500 mt-4 leading-relaxed flex items-center gap-1 hover:text-gray-900 font-medium"
+                                            className="text-sm text-gray-500 mt-4 leading-relaxed flex items-center gap-1 hover:text-[#111617] font-medium"
                                         >
                                             <ChevronLeft size={16} /> Back to Update
                                         </button>
@@ -249,7 +262,7 @@ const BillDetailModal: React.FC<BillDetailModalProps> = ({ bill, onClose, onEdit
                                         <svg className="w-full h-full transform -rotate-90" viewBox="0 0 100 100">
                                             <circle className="text-gray-100 stroke-current" cx="50" cy="50" fill="transparent" r={radius} strokeWidth="8"></circle>
                                             <circle
-                                                className="text-emerald-500 stroke-current transition-all duration-300 ease-out"
+                                                className="text-success stroke-current transition-all duration-300 ease-out"
                                                 cx="50" cy="50"
                                                 fill="transparent"
                                                 r={radius}
@@ -264,11 +277,11 @@ const BillDetailModal: React.FC<BillDetailModalProps> = ({ bill, onClose, onEdit
                                             <span className="text-[10px] text-gray-500 font-medium uppercase tracking-wider">of {formatSp(bill.totalSp)}</span>
                                         </div>
                                     </div>
-                                    <span className="mt-2 text-xs font-semibold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full">Remaining: {formatSp(spRemaining)}</span>
+                                    <span className="mt-2 text-xs font-semibold text-success-hover bg-success/10 px-2 py-0.5 rounded-full">Remaining: {formatSp(spRemaining)}</span>
                                 </div>
                             </div>
 
-                            <div className="flex-1 overflow-y-auto p-5 pt-4 md:p-8 md:pt-6 relative">
+                            <div className="flex-1 overflow-y-auto overflow-x-hidden p-5 pt-4 md:p-8 md:pt-6 relative">
                                 {viewMode === 'update' ? (
                                     <>
                                         {/* Editable Large Value */}
@@ -281,7 +294,7 @@ const BillDetailModal: React.FC<BillDetailModalProps> = ({ bill, onClose, onEdit
                                                     onChange={handleManualInput}
                                                     onFocus={(e) => e.target.select()}
                                                     onBlur={handleManualInputBlur}
-                                                    className="text-6xl font-bold text-emerald-600 tracking-tight text-center bg-transparent border-none focus:ring-0 focus:outline-none w-64 placeholder-emerald-200"
+                                                    className="text-6xl font-bold text-success-hover tracking-tight text-center bg-transparent border-none focus:ring-0 focus:outline-none w-full max-w-[260px] placeholder-success/30"
                                                     placeholder="0.00"
                                                 />
                                                 <span className="text-xl font-medium text-gray-400">SP</span>
@@ -304,14 +317,14 @@ const BillDetailModal: React.FC<BillDetailModalProps> = ({ bill, onClose, onEdit
                                             {/* Custom Track */}
                                             <div className="absolute w-full h-3 bg-gray-100 rounded-full overflow-hidden">
                                                 <div
-                                                    className="h-full bg-gradient-to-r from-emerald-300 to-emerald-600 rounded-l-full transition-all duration-75 ease-out"
+                                                    className="h-full bg-gradient-to-r from-emerald-300 to-success-hover rounded-l-full transition-all duration-75 ease-out"
                                                     style={{ width: `${sliderPercent}%` }}
                                                 />
                                             </div>
 
                                             {/* Custom Thumb handle */}
                                             <div
-                                                className="absolute top-1/2 -translate-y-1/2 w-7 h-7 bg-emerald-500 rounded-full shadow-[0_0_15px_rgba(16,185,129,0.3)] border-4 border-white cursor-grab transition-transform duration-75 ease-out pointer-events-none z-10"
+                                                className="absolute top-1/2 -translate-y-1/2 w-7 h-7 bg-success rounded-full shadow-[0_0_15px_rgba(16,185,129,0.3)] border-4 border-white cursor-grab transition-transform duration-75 ease-out pointer-events-none z-10"
                                                 style={{ left: `${sliderPercent}%`, transform: 'translate(-50%, -50%) scale(1)' }}
                                             >
                                                 {/* Tooltip above thumb */}
@@ -329,9 +342,9 @@ const BillDetailModal: React.FC<BillDetailModalProps> = ({ bill, onClose, onEdit
 
                                         {/* Quick Add Buttons */}
                                         <div className="grid grid-cols-4 gap-3 mb-8">
-                                            <button onClick={() => handleQuickAdd(27)} className="py-2.5 rounded-xl border border-gray-200 text-sm font-semibold text-gray-600 hover:border-emerald-500 hover:text-emerald-600 hover:bg-emerald-50 transition-all">+27</button>
-                                            <button onClick={() => handleQuickAdd(52)} className="py-2.5 rounded-xl border border-gray-200 text-sm font-semibold text-gray-600 hover:border-emerald-500 hover:text-emerald-600 hover:bg-emerald-50 transition-all">+52</button>
-                                            <button onClick={() => handleQuickAdd(100)} className="py-2.5 rounded-xl border border-gray-200 text-sm font-semibold text-gray-600 hover:border-emerald-500 hover:text-emerald-600 hover:bg-emerald-50 transition-all">+100</button>
+                                            <button onClick={() => handleQuickAdd(27)} className="py-2.5 rounded-xl border border-gray-200 text-sm font-semibold text-gray-600 hover:border-success hover:text-success-hover hover:bg-success/10 transition-all">+27</button>
+                                            <button onClick={() => handleQuickAdd(52)} className="py-2.5 rounded-xl border border-gray-200 text-sm font-semibold text-gray-600 hover:border-success hover:text-success-hover hover:bg-success/10 transition-all">+52</button>
+                                            <button onClick={() => handleQuickAdd(100)} className="py-2.5 rounded-xl border border-gray-200 text-sm font-semibold text-gray-600 hover:border-success hover:text-success-hover hover:bg-success/10 transition-all">+100</button>
                                             <button onClick={handleSelectAll} className="py-2.5 rounded-xl bg-orange-500 hover:bg-orange-600 border border-transparent text-sm font-bold text-white shadow-md hover:shadow-orange-500/30 transition-all">All</button>
                                         </div>
 
@@ -356,11 +369,11 @@ const BillDetailModal: React.FC<BillDetailModalProps> = ({ bill, onClose, onEdit
                                                                     <p className="text-[10px] text-gray-500">Qty: {item.quantity} • ₹{item.currentPrice}</p>
                                                                 </div>
                                                             </div>
-                                                            <span className="font-medium text-gray-900 group-hover:text-emerald-600 transition-colors">
+                                                            <span className="font-medium text-gray-900 group-hover:text-success-hover transition-colors">
                                                                 ₹{item.currentPrice * item.quantity}
                                                             </span>
                                                         </li>
-                                                        {idx < bill.items.length - 1 && <li className="h-px w-full bg-gray-200 my-1 mx-2 w-[calc(100%-16px)]"></li>}
+                                                        {idx < bill.items.length - 1 && <li className="h-px bg-gray-200 my-1 mx-2"></li>}
                                                     </React.Fragment>
                                                 ))}
                                             </ul>
@@ -370,7 +383,7 @@ const BillDetailModal: React.FC<BillDetailModalProps> = ({ bill, onClose, onEdit
                                     /* HISTORY VIEW MODE */
                                     <div className="animate-in fade-in slide-in-from-right-4 duration-300">
                                         <div className="flex items-center gap-2 mb-6">
-                                            <div className="p-2 bg-emerald-100 rounded-lg text-emerald-600">
+                                            <div className="p-2 bg-success/20 rounded-lg text-success-hover">
                                                 <History size={20} />
                                             </div>
                                             <h3 className="text-lg font-bold text-gray-900">Update History</h3>
@@ -393,7 +406,7 @@ const BillDetailModal: React.FC<BillDetailModalProps> = ({ bill, onClose, onEdit
                                                         <div key={i} className="flex items-start justify-between gap-4 p-4 bg-gray-50 rounded-xl border border-gray-100 group">
                                                             <div className="flex items-start gap-4">
                                                                 <div className="flex flex-col items-center gap-1">
-                                                                    <div className="w-2 h-2 rounded-full bg-emerald-500 mt-2"></div>
+                                                                    <div className="w-2 h-2 rounded-full bg-success mt-2"></div>
                                                                     {i < (bill.spHistory?.length || 0) - 1 && <div className="w-px h-full bg-gray-200 my-1"></div>}
                                                                 </div>
                                                                 <div className="flex-1">
@@ -453,27 +466,65 @@ const BillDetailModal: React.FC<BillDetailModalProps> = ({ bill, onClose, onEdit
                                     <button
                                         onClick={handleUpdateSP}
                                         disabled={isUpdating || updateSpAmount <= 0}
-                                        className="w-full relative group bg-emerald-500 hover:bg-emerald-600 text-white font-bold py-4 px-6 rounded-2xl shadow-lg shadow-emerald-500/30 hover:shadow-emerald-500/50 transition-all duration-300 transform hover:-translate-y-0.5 flex items-center justify-center gap-2 overflow-hidden disabled:opacity-50 disabled:cursor-not-allowed"
+                                        className="w-full relative group bg-[#88de7d] hover:bg-[#7cd472] text-[#111617] font-bold py-4 px-6 rounded-2xl shadow-lg shadow-[#88de7d]/30 hover:shadow-[#88de7d]/50 transition-all duration-300 transform hover:-translate-y-0.5 flex items-center justify-center gap-2 overflow-hidden disabled:opacity-50 disabled:cursor-not-allowed"
                                     >
                                         <span className="relative z-10 flex items-center gap-2">
                                             {isUpdating ? 'Updating...' : 'Confirm Update'}
-                                            {!isUpdating && <span className="bg-white/20 px-2 py-0.5 rounded text-sm font-medium">{formatSp(updateSpAmount)} SP</span>}
+                                            {!isUpdating && <span className="bg-[#111617]/10 px-2 py-0.5 rounded text-sm font-medium">{formatSp(updateSpAmount)} SP</span>}
                                         </span>
                                         {!isUpdating && <ArrowRight size={20} className="relative z-10 group-hover:translate-x-1 transition-transform" />}
 
                                         {/* Shimmer Effect */}
-                                        {!isUpdating && <div className="absolute inset-0 h-full w-full bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:animate-[shimmer_1.5s_infinite]"></div>}
+                                        {!isUpdating && <div className="absolute inset-0 h-full w-full bg-gradient-to-r from-transparent via-white/30 to-transparent -translate-x-full group-hover:animate-[shimmer_1.5s_infinite]"></div>}
                                     </button>
                                 </div>
                             )}
                         </>
                     ) : (
-                        /* Normal View Mode (Preserved from previous, just wrapped in new container style) */
-                        <div className="flex flex-col h-full">
-                            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
-                                <h2 className="text-lg font-bold text-gray-900">Bill Details</h2>
+                        /* Normal View Mode */
+                        <div className="flex flex-col h-full bg-white relative">
+                            {/* Sticky Header with Actions Below */}
+                            <div className="shrink-0 bg-white z-10 p-5 md:p-6 border-b border-gray-100 shadow-sm animate-fade-in-down">
+                                <div className="flex items-start justify-between">
+                                    <div className="pr-8">
+                                        <h2 className="text-xl font-black text-[#111617] mb-0.5 whitespace-nowrap truncate max-w-[200px] md:max-w-[300px]">{bill.customerName}</h2>
+                                        <p className="text-xs text-gray-400 font-semibold">{bill.id} • {bill.date}</p>
+                                    </div>
+                                    <div className={`px-3 py-1.5 rounded-xl text-xs font-bold shrink-0 mr-12 ${bill.isPaid ? 'bg-[#daf4d7] text-[#111617]' : 'bg-red-50 text-red-600'}`}>
+                                        {bill.isPaid ? 'Paid' : 'Unpaid'}
+                                    </div>
+                                </div>
+
+                                {/* Top Actions Bar */}
+                                <div className="flex items-center gap-2 mt-5 w-full">
+                                    <button
+                                        onClick={() => setShowInvoiceModal(true)}
+                                        className="flex-1 py-2.5 bg-[#88de7d] hover:bg-[#7cd472] text-[#111617] font-bold rounded-xl transition-all flex items-center justify-center gap-2 shadow-sm shadow-[#88de7d]/30 hover:shadow-md hover:shadow-[#88de7d]/40 active:scale-95 group"
+                                    >
+                                        <Printer size={16} className="group-hover:scale-110 transition-transform" /> Print
+                                    </button>
+                                    <button
+                                        onClick={() => setShowPaymentManager(true)}
+                                        className="p-2.5 bg-gray-50 hover:bg-[#daf4d7] hover:text-[#111617] text-gray-500 rounded-xl transition-all border border-gray-100 flex items-center justify-center relative group active:scale-95"
+                                        title="Manage Payment"
+                                    >
+                                        {!bill.isPaid && <span className="absolute -top-1 -right-1 flex h-3 w-3"><span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span><span className="relative inline-flex rounded-full h-3 w-3 bg-red-500 border border-white"></span></span>}
+                                        <DollarSign size={18} className="group-hover:scale-110 transition-transform" />
+                                    </button>
+                                    {onEdit && (
+                                        <>
+                                            <button onClick={() => { onEdit(bill); onClose(); }} className="p-2.5 bg-gray-50 hover:bg-[#daf4d7] hover:text-[#111617] text-gray-500 rounded-xl transition-all border border-gray-100 flex items-center justify-center active:scale-95 group">
+                                                <Edit size={18} className="group-hover:scale-110 transition-transform" />
+                                            </button>
+                                            <button onClick={async () => { if (confirm("Delete this bill?")) { await store.deleteBill(bill.id); onClose(); } }} className="p-2.5 bg-gray-50 hover:bg-red-50 text-gray-400 hover:text-red-500 rounded-xl transition-all border border-gray-100 flex items-center justify-center active:scale-95 group">
+                                                <Trash2 size={18} className="group-hover:scale-110 transition-transform" />
+                                            </button>
+                                        </>
+                                    )}
+                                </div>
                             </div>
-                            <div className="p-6 space-y-6 flex-1 overflow-y-auto">
+
+                            <div className="flex-1 overflow-y-auto p-5 md:p-6 space-y-6">
                                 {/* Quick Info */}
                                 <div className="flex gap-4 text-sm">
                                     <div className="flex-1 bg-gray-50 rounded-lg p-3 text-center">
@@ -513,35 +564,37 @@ const BillDetailModal: React.FC<BillDetailModalProps> = ({ bill, onClose, onEdit
 
                                 {/* Snapshot */}
                                 {(bill.hasSnapshot || bill.snapshotUrl) && (
-                                    <div>
-                                        <h3 className="text-sm font-bold text-gray-900 mb-3 flex items-center gap-2">
-                                            <ImageIcon size={16} className="text-gray-400" />
+                                    <div className="animate-fade-in-up" style={{ animationDelay: '150ms' }}>
+                                        <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-3 flex items-center gap-1.5">
+                                            <ImageIcon size={14} />
                                             Proof of Delivery
                                         </h3>
-                                        <div className="aspect-video bg-gray-100 rounded-xl overflow-hidden border border-gray-200">
+                                        <div className="aspect-video bg-gray-50 rounded-2xl overflow-hidden border border-gray-100 hover:shadow-md transition-shadow cursor-pointer group">
                                             <SnapshotImage url={bill.snapshotUrl} billId={bill.id} hasSnapshot={bill.hasSnapshot} />
                                         </div>
                                     </div>
                                 )}
                             </div>
-                            {/* Footer */}
-                            <div className="p-4 border-t border-gray-100 bg-gray-50/50 flex gap-3">
+
+                            {/* Sticky Bottom Actions */}
+                            <div className="shrink-0 p-4 md:p-5 border-t border-gray-100 bg-white grid grid-cols-2 gap-3 animate-fade-in-up">
                                 <button
-                                    onClick={() => setShowInvoiceModal(true)}
-                                    className="flex-1 py-3 bg-gray-900 hover:bg-gray-800 text-white font-medium rounded-xl transition-colors flex items-center justify-center gap-2"
+                                    onClick={() => setShowProductHandover(true)}
+                                    className="py-3 px-2 bg-slate-50 hover:bg-[#111617] text-slate-700 hover:text-[#88de7d] font-bold rounded-xl transition-colors border border-slate-100 hover:border-[#111617] flex flex-col items-center justify-center gap-1 shadow-sm active:scale-95 group"
                                 >
-                                    <Printer size={18} /> Print
+                                    <Package size={18} className="group-hover:-translate-y-0.5 transition-transform" />
+                                    <span className="text-[10px] uppercase tracking-wider">Manage Products</span>
                                 </button>
-                                {onEdit && (
-                                    <>
-                                        <button onClick={() => { onEdit(bill); onClose(); }} className="p-3 bg-white border border-gray-200 text-gray-600 hover:border-gray-300 rounded-xl transition-colors">
-                                            <Edit size={18} />
-                                        </button>
-                                        <button onClick={async () => { if (confirm("Delete this bill?")) { await store.deleteBill(bill.id); onClose(); } }} className="p-3 bg-white border border-red-100 text-red-500 hover:bg-red-50 rounded-xl transition-colors">
-                                            <Trash2 size={18} />
-                                        </button>
-                                    </>
-                                )}
+
+                                <button
+                                    onClick={() => setViewMode('update')}
+                                    className="py-3 px-2 bg-slate-50 hover:bg-[#111617] text-slate-700 hover:text-[#88de7d] font-bold rounded-xl transition-colors border border-slate-100 hover:border-[#111617] flex flex-col items-center justify-center gap-1 shadow-sm active:scale-95 group relative"
+                                    title="Manage Service Points"
+                                >
+                                    {isSpPending && <div className="absolute top-2 right-4 w-2 h-2 rounded-full bg-orange-400 animate-pulse border border-white"></div>}
+                                    <CheckCircle2 size={18} className="group-hover:-translate-y-0.5 transition-transform" />
+                                    <span className="text-[10px] uppercase tracking-wider">Manage SP</span>
+                                </button>
                             </div>
                         </div>
                     )}

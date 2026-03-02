@@ -65,6 +65,9 @@ body {
   */
   body * {
     visibility: hidden;
+    transform: none !important;
+    transition: none !important;
+    animation: none !important;
   }
 
   /* 
@@ -101,6 +104,8 @@ body {
     display: block !important;
     background: white !important;
     z-index: 9999;
+    transform: none !important;
+    animation: none !important;
   }
 
   /* 2. Reset the modal card (remove fixed heights/overflows) */
@@ -116,6 +121,8 @@ body {
     border-radius: 0 !important;
     margin: 0 !important;
     padding: 0 !important;
+    transform: none !important;
+    animation: none !important;
   }
 
   /* 3. Reset the scrollable preview area */
@@ -209,7 +216,7 @@ body {
 /* Modern Mobile Menu Styles - Flat & Highlighted */
 :root {
   --component-inactive-color: #9ca3af;
-  --component-active-color-default: #132c25;
+  --component-active-color-default: #111617;
 }
 
 .menu {
@@ -247,8 +254,8 @@ body {
 
 .menu__item.active {
   color: var(--component-active-color);
-  background-color: rgba(203, 243, 130, 0.3);
-  /* Green box with low opacity (primary color) */
+  background-color: #daf4d7;
+  /* Light brand green box */
 }
 
 .menu__icon {
@@ -263,12 +270,12 @@ body {
 .menu__item--center .menu__icon {
   width: 48px;
   height: 48px;
-  background-color: #cbf382;
-  /* Primary Green */
+  background-color: #88de7d;
+  /* Brand Green */
   border-radius: 50%;
   box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-  color: #132c25;
-  /* Dark Text Color */
+  color: #111617;
+  /* Brand Dark Text Color */
   margin-top: 0;
   border: none;
   transition: all 0.2s ease-out;
@@ -276,9 +283,9 @@ body {
 
 .menu__item--center.active .menu__icon {
   transform: none;
-  background-color: #bce870;
-  /* Primary Hover Green */
-  box-shadow: 0 4px 12px rgba(203, 243, 130, 0.4);
+  background-color: #88de7d;
+  /* Brand Hover Green */
+  box-shadow: 0 4px 12px rgba(136, 222, 125, 0.4);
 }
 
 /* Ensure centering for the icon within the circle */
@@ -313,4 +320,56 @@ body {
   100% {
     transform: translateX(100%);
   }
+}
+
+/* Payment Modal Zoom Animation */
+@keyframes zoomIn {
+  0% {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes zoomOut {
+  0% {
+    opacity: 1;
+    transform: scale(1);
+  }
+
+  100% {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+}
+
+.animate-zoom-in {
+  animation: zoomIn 0.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  will-change: transform, opacity;
+}
+
+.animate-zoom-out {
+  animation: zoomOut 0.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  will-change: transform, opacity;
+}
+
+/* Mobile Product List Item Animation */
+@keyframes mobileProductSlideIn {
+  from {
+    opacity: 0;
+    transform: translateX(12px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+.mobile-product-item {
+  animation: mobileProductSlideIn 0.25s cubic-bezier(0.16, 1, 0.3, 1) backwards;
 }

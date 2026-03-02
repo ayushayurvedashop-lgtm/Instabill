@@ -1,5 +1,6 @@
 /// <reference types="vite/client" />
 import { Bill } from '../types';
+import { store } from '../store';
 
 // TextBee API Configuration
 const API_KEY = import.meta.env.VITE_TEXTBEE_API_KEY;
@@ -12,6 +13,13 @@ import { functions } from '../firebaseConfig';
 
 export const sendBillWhatsapp = async (bill: Bill, customerPhone: string, pdfUrl: string, isUpdate: boolean = false): Promise<boolean> => {
     try {
+        // Check if WhatsApp is enabled in settings
+        const settings = store.getSettings();
+        if (settings.whatsappEnabled === false) {
+            console.log('WhatsApp notifications are disabled in settings');
+            return false;
+        }
+
         // --- Client-Side Validation ---
         if (!bill || !bill.id) {
             console.error('WhatsApp Error: Invalid Bill ID');
@@ -34,13 +42,13 @@ export const sendBillWhatsapp = async (bill: Bill, customerPhone: string, pdfUrl
         let formattedPhone = customerPhone.replace(/\D/g, '');
         if (formattedPhone.length === 10) formattedPhone = '91' + formattedPhone;
 
-        const message = isUpdate ? "Bill Updated Successfully" : "Bill Generated Successfully";
-
         const response = await sendWhatsapp({
             destination: formattedPhone,
-            billReference: isUpdate ? `Bill #${bill.id} Updated` : `Bill #${bill.id}`,
-            updateMessage: message,
-            billUrl: pdfUrl
+            billReference: bill.id,
+            billUrl: pdfUrl,
+            totalAmount: bill.totalAmount,
+            totalSp: bill.totalSp,
+            isUpdate
         });
 
         const result = response.data as any;
@@ -53,6 +61,124 @@ export const sendBillWhatsapp = async (bill: Bill, customerPhone: string, pdfUrl
         }
     } catch (error) {
         console.error('Error sending WhatsApp:', error);
+        return false;
+    }
+};
+
+// Send WhatsApp notification when products are handed over
+export const sendProductUpdateWhatsapp = async (
+    customerPhone: string,
+    billReference: string,
+    productsGiven: string,
+    billUrl: string
+): Promise<boolean> => {
+    try {
+        // Check if WhatsApp is enabled in settings
+        const settings = store.getSettings();
+        if (settings.whatsappEnabled === false) {
+            console.log('WhatsApp notifications are disabled in settings');
+            return false;
+        }
+
+        // --- Client-Side Validation ---
+        if (!customerPhone) {
+            console.error('WhatsApp Error: Invalid Phone Number');
+            return false;
+        }
+        if (!billReference) {
+            console.error('WhatsApp Error: Invalid Bill Reference');
+            return false;
+        }
+        if (!productsGiven) {
+            console.error('WhatsApp Error: No products given');
+            return false;
+        }
+        if (!billUrl || typeof billUrl !== 'string' || !billUrl.trim()) {
+            console.error('WhatsApp Error: Invalid PDF URL');
+            return false;
+        }
+        // -----------------------------
+
+        const sendNotification = httpsCallable(functions, 'sendProductUpdateNotification');
+
+        // Format phone
+        let formattedPhone = customerPhone.replace(/\D/g, '');
+        if (formattedPhone.length === 10) formattedPhone = '91' + formattedPhone;
+
+        const response = await sendNotification({
+            destination: formattedPhone,
+            billReference,
+            productsGiven,
+            billUrl
+        });
+
+        const result = response.data as any;
+        if (result.success) {
+            console.log('Product Update WhatsApp sent successfully:', result);
+            return true;
+        } else {
+            console.error('Product Update WhatsApp failed:', result);
+            return false;
+        }
+    } catch (error) {
+        console.error('Error sending Product Update WhatsApp:', error);
+        return false;
+    }
+};
+
+// Send WhatsApp notification when SP is marked as done/completed
+export const sendSPDoneWhatsapp = async (
+    customerPhone: string,
+    billReference: string,
+    totalSp: number,
+    billUrl: string
+): Promise<boolean> => {
+    try {
+        // Check if WhatsApp is enabled in settings
+        const settings = store.getSettings();
+        if (settings.whatsappEnabled === false) {
+            console.log('WhatsApp notifications are disabled in settings');
+            return false;
+        }
+
+        // --- Client-Side Validation ---
+        if (!customerPhone) {
+            console.error('WhatsApp Error: Invalid Phone Number');
+            return false;
+        }
+        if (!billReference) {
+            console.error('WhatsApp Error: Invalid Bill Reference');
+            return false;
+        }
+        if (!billUrl || typeof billUrl !== 'string' || !billUrl.trim()) {
+            console.error('WhatsApp Error: Invalid PDF URL');
+            return false;
+        }
+        // -----------------------------
+
+        const sendNotification = httpsCallable(functions, 'sendSPDoneNotification');
+
+        // Format phone
+        let formattedPhone = customerPhone.replace(/\D/g, '');
+        if (formattedPhone.length === 10) formattedPhone = '91' + formattedPhone;
+
+        const response = await sendNotification({
+            destination: formattedPhone,
+            billReference,
+            totalSp,
+            billUrl
+        });
+
+        const result = response.data as any;
+        if (result.success) {
+            console.log('SP Done WhatsApp sent successfully:', result);
+            return true;
+        } else {
+            console.error('SP Done WhatsApp failed:', result);
+            return false;
+        }
+    } catch (error) {
+        console.error('Error sending SP Done WhatsApp:', error);
         return false;
     }
 };

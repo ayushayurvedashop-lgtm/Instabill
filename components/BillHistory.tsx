@@ -126,46 +126,41 @@ const BillHistory: React.FC<BillHistoryProps> = ({ onEditBill }) => {
                     <table className="w-full text-left border-collapse">
                         <thead className="bg-gray-50 sticky top-0 z-10">
                             <tr>
-                                <th className="p-4 text-xs font-bold text-gray-500 uppercase tracking-wider rounded-tl-xl">Bill ID</th>
-                                <th className="p-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Customer</th>
-                                <th className="p-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Date & Time</th>
-                                <th className="p-4 text-xs font-bold text-gray-500 uppercase tracking-wider text-right">Amount</th>
-                                <th className="p-4 text-xs font-bold text-gray-500 uppercase tracking-wider text-center">Status</th>
-                                <th className="p-4 text-xs font-bold text-gray-500 uppercase tracking-wider rounded-tr-xl">Action</th>
+                                <th className="p-4 text-xs font-bold text-gray-400 uppercase tracking-wider rounded-tl-xl">Bill ID</th>
+                                <th className="p-4 text-xs font-bold text-gray-400 uppercase tracking-wider">Customer</th>
+                                <th className="p-4 text-xs font-bold text-gray-400 uppercase tracking-wider">Date & Time</th>
+                                <th className="p-4 text-xs font-bold text-gray-400 uppercase tracking-wider text-right">Amount</th>
+                                <th className="p-4 text-xs font-bold text-gray-400 uppercase tracking-wider text-center rounded-tr-xl">Status</th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-gray-100">
                             {filteredBills.length > 0 ? (
                                 filteredBills.map((bill) => (
-                                    <tr key={bill.id} className="hover:bg-gray-50 transition-colors group">
-                                        <td className="p-4 font-medium text-dark">{bill.id}</td>
+                                    <tr
+                                        key={bill.id}
+                                        onClick={() => setSelectedBill(bill)}
+                                        className="hover:bg-gray-50 transition-all group cursor-pointer active:scale-[0.99]"
+                                    >
+                                        <td className="p-4 font-bold text-[#111617]">{bill.id}</td>
                                         <td className="p-4">
-                                            <div className="flex items-center gap-2">
-                                                <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center text-dark font-bold text-xs">
+                                            <div className="flex items-center gap-3">
+                                                <div className="w-9 h-9 rounded-full bg-[#daf4d7] flex items-center justify-center text-[#111617] font-bold text-xs ring-2 ring-transparent group-hover:ring-[#88de7d] transition-all">
                                                     {bill.customerName.charAt(0).toUpperCase()}
                                                 </div>
-                                                <span className="font-medium text-dark">{bill.customerName}</span>
+                                                <span className="font-semibold text-[#111617]">{bill.customerName}</span>
                                             </div>
                                         </td>
                                         <td className="p-4 text-gray-500 text-sm">
-                                            <div className="flex flex-col">
-                                                <span className="flex items-center gap-1"><Calendar size={12} /> {bill.date}</span>
-                                                {bill.time && <span className="flex items-center gap-1 text-xs text-gray-400"><Clock size={12} /> {bill.time}</span>}
+                                            <div className="flex flex-col gap-0.5">
+                                                <span className="flex items-center gap-1.5"><Calendar size={13} className="text-[#88de7d]" /> {bill.date}</span>
+                                                {bill.time && <span className="flex items-center gap-1.5 text-xs text-gray-400"><Clock size={13} /> {bill.time}</span>}
                                             </div>
                                         </td>
-                                        <td className="p-4 text-right font-bold text-dark">₹{bill.totalAmount}</td>
+                                        <td className="p-4 text-right font-bold text-[#111617] text-lg">₹{bill.totalAmount}</td>
                                         <td className="p-4 text-center">
-                                            <span className={`px-2 py-1 rounded-lg text-xs font-bold ${bill.isPaid ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+                                            <span className={`px-2.5 py-1 rounded-lg text-xs font-bold ${bill.isPaid ? 'bg-green-100 text-green-700' : 'bg-red-50 text-red-600'}`}>
                                                 {bill.isPaid ? 'Paid' : 'Unpaid'}
                                             </span>
-                                        </td>
-                                        <td className="p-4">
-                                            <button
-                                                onClick={() => setSelectedBill(bill)}
-                                                className="px-3 py-1.5 bg-white border border-gray-200 rounded-lg text-sm font-medium text-gray-600 hover:text-primary hover:border-primary transition-colors shadow-sm"
-                                            >
-                                                View
-                                            </button>
                                         </td>
                                     </tr>
                                 ))
@@ -184,47 +179,43 @@ const BillHistory: React.FC<BillHistoryProps> = ({ onEditBill }) => {
                 <div className="md:hidden overflow-y-auto flex-1 p-4 space-y-3">
                     {filteredBills.length > 0 ? (
                         filteredBills.map((bill) => (
-                            <div key={bill.id} className="bg-gray-50 rounded-2xl p-4 space-y-3">
+                            <div
+                                key={bill.id}
+                                onClick={() => setSelectedBill(bill)}
+                                className="bg-white border border-gray-100 rounded-2xl p-5 space-y-4 shadow-sm hover:shadow-md transition-all active:scale-[0.98] cursor-pointer group"
+                            >
                                 {/* Header Row */}
                                 <div className="flex items-start justify-between">
                                     <div className="flex items-center gap-3">
-                                        <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center text-dark font-bold text-sm">
+                                        <div className="w-10 h-10 rounded-full bg-[#daf4d7] flex items-center justify-center text-[#111617] font-bold text-sm ring-2 ring-transparent group-hover:ring-[#88de7d] transition-all">
                                             {bill.customerName.charAt(0).toUpperCase()}
                                         </div>
                                         <div>
-                                            <p className="font-bold text-dark text-sm">{bill.customerName}</p>
-                                            <p className="text-xs text-gray-500">{bill.id}</p>
+                                            <p className="font-bold text-[#111617] text-base leading-tight">{bill.customerName}</p>
+                                            <p className="text-xs text-gray-400 font-medium mt-0.5">{bill.id}</p>
                                         </div>
                                     </div>
-                                    <span className={`px-2 py-1 rounded-lg text-xs font-bold whitespace-nowrap ${bill.isPaid ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+                                    <span className={`px-2.5 py-1 rounded-lg text-xs font-bold whitespace-nowrap ${bill.isPaid ? 'bg-green-100 text-green-700' : 'bg-red-50 text-red-600'}`}>
                                         {bill.isPaid ? 'Paid' : 'Unpaid'}
                                     </span>
                                 </div>
 
                                 {/* Details Row */}
-                                <div className="flex items-center justify-between text-sm">
-                                    <div className="flex flex-col gap-1">
-                                        <span className="flex items-center gap-1 text-gray-500">
-                                            <Calendar size={12} /> {bill.date}
+                                <div className="flex items-end justify-between pt-2 border-t border-gray-50">
+                                    <div className="flex flex-col gap-1.5">
+                                        <span className="flex items-center gap-1.5 text-sm text-gray-500 font-medium">
+                                            <Calendar size={14} className="text-[#88de7d]" /> {bill.date}
                                         </span>
                                         {bill.time && (
-                                            <span className="flex items-center gap-1 text-xs text-gray-400">
-                                                <Clock size={12} /> {bill.time}
+                                            <span className="flex items-center gap-1.5 text-xs text-gray-400">
+                                                <Clock size={14} /> {bill.time}
                                             </span>
                                         )}
                                     </div>
                                     <div className="text-right">
-                                        <p className="text-xl font-bold text-dark">₹{bill.totalAmount}</p>
+                                        <p className="text-2xl font-black text-[#111617]">₹{bill.totalAmount}</p>
                                     </div>
                                 </div>
-
-                                {/* Action Button */}
-                                <button
-                                    onClick={() => setSelectedBill(bill)}
-                                    className="w-full px-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm font-medium text-gray-600 hover:text-primary hover:border-primary transition-colors shadow-sm"
-                                >
-                                    View Details
-                                </button>
                             </div>
                         ))
                     ) : (

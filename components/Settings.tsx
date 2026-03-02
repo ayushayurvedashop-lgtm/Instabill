@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { Database, Trash2, AlertTriangle, Loader2, CloudOff, Video, Plus, X, Link as LinkIcon, Upload } from 'lucide-react';
+import { Database, Trash2, AlertTriangle, Loader2, CloudOff, Video, Plus, X, Link as LinkIcon, Upload, MessageCircle } from 'lucide-react';
 import { store } from '../store';
 import { db, storage } from '../firebaseConfig';
 import { collection, addDoc, deleteDoc, doc, onSnapshot, query, orderBy, updateDoc } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage';
+import { ShopProfile } from '../types';
+import { updateShopProfile } from '../services/authService';
 
 interface ResultVideo {
   id: string;
@@ -13,7 +15,11 @@ interface ResultVideo {
   isShowcase?: boolean;
 }
 
-const Settings: React.FC = () => {
+interface SettingsProps {
+  shopProfile?: ShopProfile | null;
+}
+
+const Settings: React.FC<SettingsProps> = ({ shopProfile }) => {
   const [isResetting, setIsResetting] = useState(false);
   const [showWipeConfirm, setShowWipeConfirm] = useState(false);
   const [wipeCloud, setWipeCloud] = useState(false);
@@ -27,13 +33,14 @@ const Settings: React.FC = () => {
   const [videoFile, setVideoFile] = useState<File | null>(null);
   const [isUploading, setIsUploading] = useState(false);
 
-  // Shop Info State
-  const [shopName, setShopName] = useState(store.getSettings().shopName);
-  const [shopAddress, setShopAddress] = useState(store.getSettings().shopAddress);
+  // Shop Info State — prefer shopProfile if available, fall back to store settings
+  const [shopName, setShopName] = useState(shopProfile?.shopName || store.getSettings().shopName);
+  const [shopAddress, setShopAddress] = useState(shopProfile?.address || store.getSettings().shopAddress);
   const [isSavingShopInfo, setIsSavingShopInfo] = useState(false);
 
   // Preferences State
   const [defaultBillingMode, setDefaultBillingMode] = useState(store.getSettings().defaultBillingMode || 'DP');
+  const [whatsappEnabled, setWhatsappEnabled] = useState(store.getSettings().whatsappEnabled !== false); // Default to true
 
   useEffect(() => {
     const q = query(collection(db, 'result_videos'), orderBy('createdAt', 'desc'));
@@ -63,6 +70,7 @@ const Settings: React.FC = () => {
       }
       // Always sync defaultBillingMode as it's not a text input
       setDefaultBillingMode(s.defaultBillingMode || 'DP');
+      setWhatsappEnabled(s.whatsappEnabled !== false);
     });
 
     return () => {
@@ -89,7 +97,16 @@ const Settings: React.FC = () => {
 
   const handleSaveShopInfo = async () => {
     setIsSavingShopInfo(true);
+    // Update store settings
     await store.updateSettings({ shopName, shopAddress });
+    // Also update Firestore shop profile if it exists
+    if (shopProfile?.id) {
+      try {
+        await updateShopProfile(shopProfile.id, { shopName, address: shopAddress });
+      } catch (e) {
+        console.warn('Failed to update shop profile', e);
+      }
+    }
     setIsSavingShopInfo(false);
     alert('Shop information saved successfully!');
   };
@@ -290,6 +307,34 @@ const Settings: React.FC = () => {
             </button>
           </div>
         </div>
+
+        {/* WhatsApp Notifications Toggle */}
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 p-4 bg-green-50 rounded-2xl border border-green-100 mt-4">
+          <div className="flex items-start gap-3">
+            <div className="w-10 h-10 rounded-full bg-green-100 flex items-center justify-center flex-shrink-0">
+              <MessageCircle size={20} className="text-green-600" />
+            </div>
+            <div>
+              <h4 className="font-bold text-dark text-sm mb-1">WhatsApp Notifications</h4>
+              <p className="text-xs text-gray-500">Send WhatsApp messages for bill generation, updates, and product handovers.</p>
+            </div>
+          </div>
+
+          <button
+            onClick={() => {
+              const newValue = !whatsappEnabled;
+              setWhatsappEnabled(newValue);
+              store.updateSettings({ whatsappEnabled: newValue });
+            }}
+            className={`relative inline-flex h-8 w-14 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 ${whatsappEnabled ? 'bg-green-600' : 'bg-gray-300'
+              }`}
+          >
+            <span
+              className={`pointer-events-none inline-block h-7 w-7 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${whatsappEnabled ? 'translate-x-6' : 'translate-x-0'
+                }`}
+            />
+          </button>
+        </div>
       </div>
 
       {/* Video Management Section */}
@@ -457,7 +502,7 @@ const Settings: React.FC = () => {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div>
             <label className="block text-sm font-medium text-gray-500 mb-1">App Name</label>
-            <p className="font-bold text-dark">Ayush Ayurveda Manager</p>
+            <p className="font-bold text-dark">Instabill</p>
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-500 mb-1">Version</label>

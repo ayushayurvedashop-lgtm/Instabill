@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Search, FileText, Calendar, Clock, User, IndianRupee, X, Image as ImageIcon, Loader, AlertCircle } from 'lucide-react';
 import { store } from '../store';
 import { Bill } from '../types';
+import { useBackButton } from '../hooks/useBackButton';
 import { storage, db } from '../firebaseConfig';
 import { ref, getBlob } from 'firebase/storage';
 import { doc, getDoc } from 'firebase/firestore';
@@ -16,6 +17,9 @@ const BillHistory: React.FC<BillHistoryProps> = ({ onEditBill }) => {
     const [bills, setBills] = useState<Bill[]>([]);
     const [searchTerm, setSearchTerm] = useState('');
     const [selectedBill, setSelectedBill] = useState<Bill | null>(null);
+
+    // Back button: close bill detail panel
+    useBackButton(selectedBill !== null, () => setSelectedBill(null));
 
     useEffect(() => {
         const updateBills = () => {

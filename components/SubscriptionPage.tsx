@@ -1,25 +1,38 @@
 import React, { useState, useEffect } from 'react';
-import { db } from '../firebaseConfig';
+import { db, functions } from '../firebaseConfig';
 import { doc, getDoc, updateDoc } from 'firebase/firestore';
+import { httpsCallable } from 'firebase/functions';
 import { ShopProfile, PlanConfig } from '../types';
-import { Crown, Zap, Building2, Check, ChevronDown, ChevronUp } from 'lucide-react';
+import { Crown, Zap, Building2, Check, ChevronDown, ChevronUp, LogOut } from 'lucide-react';
+
+declare global {
+  interface Window {
+    Razorpay: any;
+  }
+}
 
 interface SubscriptionPageProps {
     shopProfile: ShopProfile;
     onSubscribed: (updatedProfile: ShopProfile) => void;
+    onLogout: () => void;
 }
 
 const DEFAULT_PRICES: PlanConfig = {
     basicPrice: 499,
     proPrice: 3999,
     enterpriseMonthlyPrice: 399,
+    extendBasicPrice: 399,
+    extendProPrice: 2999,
+    extendCustomMonthlyPrice: 349,
 };
 
-const SubscriptionPage: React.FC<SubscriptionPageProps> = ({ shopProfile, onSubscribed }) => {
+const SubscriptionPage: React.FC<SubscriptionPageProps> = ({ shopProfile, onSubscribed, onLogout }) => {
     const [prices, setPrices] = useState<PlanConfig>(DEFAULT_PRICES);
     const [loading, setLoading] = useState(true);
-    const [enterpriseMonths, setEnterpriseMonths] = useState(3);
+    const [enterpriseMonths, setEnterpriseMonths] = useState(2);
     const [subscribing, setSubscribing] = useState<string | null>(null);
+    const [showTrialModal, setShowTrialModal] = useState(false);
+    const [trialForm, setTrialForm] = useState({ name: shopProfile.shopName, phone: shopProfile.phone });
 
     useEffect(() => {
         loadPrices();
@@ -40,36 +53,107 @@ const SubscriptionPage: React.FC<SubscriptionPageProps> = ({ shopProfile, onSubs
     const handleSubscribe = async (planId: string, durationMonths: number) => {
         setSubscribing(planId);
         try {
-            const now = new Date();
-            const end = new Date(now);
-            end.setMonth(end.getMonth() + durationMonths);
+            // 1. Get the order details from our secure Cloud Function
+            const createOrderObj = httpsCallable(functions, 'createRazorpayOrder');
+            const result = await createOrderObj({ planId, enterpriseMonths: durationMonths });
+            const data = result.data as any;
 
-            const updates: Partial<ShopProfile> = {
-                planId,
-                subscriptionStatus: 'active',
-                subscriptionStart: now.toISOString(),
-                subscriptionEnd: end.toISOString(),
-                currentPeriodEnd: end.toISOString(),
-                planDurationMonths: durationMonths,
+            if (!data.orderId) {
+                throw new Error("Failed to generate order ID");
+            }
+
+            // 2. Initialize Razorpay Checkout
+            const options = {
+                key: data.keyId, // The public key from the backend
+                amount: data.amount,
+                currency: data.currency,
+                name: "Instabill",
+                description: `${planId.toUpperCase()} Plan Subscription`,
+                image: "/Logo-Icon.png",
+                order_id: data.orderId,
+                handler: async function (response: any) {
+                    try {
+                        const now = new Date();
+                        const end = new Date(now);
+                        end.setMonth(end.getMonth() + durationMonths);
+
+                        const updates: Partial<ShopProfile> = {
+                            planId,
+                            subscriptionStatus: 'active',
+                            subscriptionStart: now.toISOString(),
+                            subscriptionEnd: end.toISOString(),
+                            currentPeriodEnd: end.toISOString(),
+                            planDurationMonths: durationMonths,
+                        };
+
+                        await updateDoc(doc(db, 'shops', shopProfile.id), updates);
+
+                        onSubscribed({
+                            ...shopProfile,
+                            ...updates,
+                        } as ShopProfile);
+                        
+                        alert('Payment Successful! Your subscription is now active.');
+                    } catch (err) {
+                        console.error('Failed to update subscription post-payment', err);
+                        alert('Payment was successful but error updating profile. Please contact support.');
+                    }
+                    setSubscribing(null);
+                },
+                prefill: {
+                    name: shopProfile.shopName,
+                    contact: shopProfile.phone
+                },
+                theme: {
+                    color: "#21776A"
+                },
+                modal: {
+                    ondismiss: function() {
+                        setSubscribing(null);
+                    }
+                }
             };
 
-            await updateDoc(doc(db, 'shops', shopProfile.id), updates);
+            const rzp = new window.Razorpay(options);
+            
+            rzp.on('payment.failed', function (response: any) {
+                console.error("Payment failed:", response.error);
+                alert(`Payment Failed: ${response.error.description || 'Please try again.'}`);
+                setSubscribing(null);
+            });
 
-            onSubscribed({
-                ...shopProfile,
-                ...updates,
-            } as ShopProfile);
+            rzp.open();
+            
+        } catch (err: any) {
+            console.error('Failed to initiate subscription', err);
+            alert(`Subscription initiation failed: ${err.message || 'Please try again.'}`);
+            setSubscribing(null);
+        }
+    };
+
+    const handleRequestTrial = async (e: React.FormEvent) => {
+        e.preventDefault();
+        setSubscribing('trial');
+        try {
+            await updateDoc(doc(db, 'shops', shopProfile.id), {
+                trialStatus: 'pending',
+            });
+            onSubscribed({ ...shopProfile, trialStatus: 'pending' });
+            setShowTrialModal(false);
+            alert("Free trial request submitted successfully! Admin will verify and activate your trial.");
         } catch (err) {
-            console.error('Failed to subscribe', err);
-            alert('Subscription failed. Please try again.');
+            console.error('Failed to request trial', err);
+            alert("Failed to submit trial request. Please try again.");
         }
         setSubscribing(null);
     };
 
     // Check if already has active subscription
-    const isActive = shopProfile.subscriptionStatus === 'active' &&
+    const isActive = (shopProfile.subscriptionStatus === 'active' || shopProfile.subscriptionStatus === 'trial') &&
         shopProfile.subscriptionEnd &&
-        new Date(shopProfile.subscriptionEnd) > new Date();
+        (typeof shopProfile.subscriptionEnd === 'string' 
+            ? new Date(shopProfile.subscriptionEnd) > new Date()
+            : (shopProfile.subscriptionEnd as any).toDate ? (shopProfile.subscriptionEnd as any).toDate() > new Date() : false);
 
     if (loading) {
         return (
@@ -88,6 +172,41 @@ const SubscriptionPage: React.FC<SubscriptionPageProps> = ({ shopProfile, onSubs
             padding: '40px 20px',
             fontFamily: "'Inter', -apple-system, sans-serif",
         }}>
+            {/* Logout Button */}
+            <button
+                onClick={onLogout}
+                style={{
+                    position: 'absolute',
+                    top: '20px',
+                    right: '20px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px',
+                    padding: '8px 16px',
+                    background: 'white',
+                    color: '#EF4444',
+                    border: '1px solid #FEE2E2',
+                    borderRadius: '12px',
+                    fontSize: '14px',
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                    boxShadow: '0 2px 8px rgba(0,0,0,0.02)',
+                    transition: 'all 0.2s',
+                    zIndex: 50,
+                }}
+                onMouseOver={(e) => {
+                    e.currentTarget.style.background = '#FEF2F2';
+                    e.currentTarget.style.transform = 'translateY(-1px)';
+                }}
+                onMouseOut={(e) => {
+                    e.currentTarget.style.background = 'white';
+                    e.currentTarget.style.transform = 'translateY(0)';
+                }}
+            >
+                <LogOut size={16} />
+                Logout
+            </button>
+
             {/* Header */}
             <div style={{ textAlign: 'center', marginBottom: '48px', maxWidth: '600px', margin: '0 auto 48px' }}>
                 <div style={{
@@ -109,7 +228,7 @@ const SubscriptionPage: React.FC<SubscriptionPageProps> = ({ shopProfile, onSubs
                 <p style={{ fontSize: '16px', color: '#6B7280', margin: 0, lineHeight: 1.6 }}>
                     {isActive
                         ? `Your ${shopProfile.planId} plan is active until ${new Date(shopProfile.subscriptionEnd!).toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' })}`
-                        : 'Select a plan to unlock all features of your shop dashboard'
+                        : (shopProfile.trialStatus === 'pending' ? 'Your Free Trial request is pending verification. Please wait for admin approval.' : 'Select a plan to unlock all features of your shop dashboard')
                     }
                 </p>
             </div>
@@ -119,9 +238,68 @@ const SubscriptionPage: React.FC<SubscriptionPageProps> = ({ shopProfile, onSubs
                 display: 'grid',
                 gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
                 gap: '24px',
-                maxWidth: '960px',
+                maxWidth: '1200px',
                 margin: '0 auto',
             }}>
+                {/* Free Trial Card */}
+                {(!shopProfile.trialStatus || shopProfile.trialStatus === 'none') && !isActive && (
+                    <div style={{
+                        background: 'linear-gradient(135deg, #FF9A9E 0%, #FECFEF 100%)',
+                        borderRadius: '20px',
+                        padding: '32px 28px',
+                        border: 'none',
+                        boxShadow: '0 4px 15px rgba(255, 154, 158, 0.3)',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        position: 'relative',
+                        transition: 'all 0.3s ease',
+                    }}>
+                        <div style={{
+                            position: 'absolute', top: '-12px', left: '50%', transform: 'translateX(-50%)',
+                            background: '#FF416C', color: 'white', padding: '4px 16px', borderRadius: '12px',
+                            fontSize: '11px', fontWeight: 800, letterSpacing: '0.5px', whiteSpace: 'nowrap'
+                        }}>NEW SHOP</div>
+                        <div style={{
+                            width: '48px', height: '48px', borderRadius: '14px',
+                            background: 'rgba(255,255,255,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            marginBottom: '20px',
+                        }}>
+                            <Zap size={24} color="#FF416C" />
+                        </div>
+                        <h3 style={{ fontSize: '20px', fontWeight: 800, color: '#111617', margin: '0 0 4px' }}>Free Trial</h3>
+                        <p style={{ fontSize: '13px', color: '#111617', opacity: 0.8, margin: '0 0 20px' }}>Request test access</p>
+                        <div style={{ marginBottom: '24px' }}>
+                            <span style={{ fontSize: '36px', fontWeight: 900, color: '#111617' }}>Free</span>
+                        </div>
+                        <div style={{ flex: 1, marginBottom: '24px' }}>
+                            {['7 days duration', 'All Features', 'All Products Catalog', 'Pending Product Manager', 'SP Management', 'Customer Data Manager', 'Payment Tracking', 'Daily Revenue Stats'].map(f => (
+                                <div key={f} style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '12px' }}>
+                                    <div style={{ width: '20px', height: '20px', borderRadius: '50%', background: 'rgba(255,255,255,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                                        <Check size={12} color="#FF416C" strokeWidth={3} />
+                                    </div>
+                                    <span style={{ fontSize: '13px', color: '#111617', fontWeight: 600 }}>{f}</span>
+                                </div>
+                            ))}
+                        </div>
+                        <button
+                            onClick={() => setShowTrialModal(true)}
+                            disabled={subscribing !== null}
+                            style={{
+                                width: '100%', padding: '14px',
+                                background: '#FF416C',
+                                color: 'white',
+                                border: 'none', borderRadius: '12px',
+                                fontSize: '14px', fontWeight: 700,
+                                cursor: 'pointer',
+                                transition: 'all 0.2s',
+                                fontFamily: 'inherit',
+                            }}
+                        >
+                            Request For Free Trial
+                        </button>
+                    </div>
+                )}
+
                 {/* Basic Plan */}
                 <div style={{
                     background: 'white',
@@ -155,7 +333,7 @@ const SubscriptionPage: React.FC<SubscriptionPageProps> = ({ shopProfile, onSubs
                         <span style={{ fontSize: '14px', color: '#9CA3AF', fontWeight: 500, marginLeft: '4px' }}>/month</span>
                     </div>
                     <div style={{ flex: 1, marginBottom: '24px' }}>
-                        {['1 month duration', 'Full billing system', 'Customer management', 'Product catalog'].map(f => (
+                        {['1-Month Duration', 'All Features', 'All Products Catalog', 'Pending Product Manager', 'SP Management', 'Customer Data Manager', 'Payment Tracking', 'Daily Revenue Stats', 'Unlimited Bills Generation', 'WhatsApp Notifications', 'Customer Support'].map(f => (
                             <div key={f} style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '12px' }}>
                                 <div style={{ width: '20px', height: '20px', borderRadius: '50%', background: '#EEF9FF', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                                     <Check size={12} color="#3B82F6" strokeWidth={3} />
@@ -178,7 +356,7 @@ const SubscriptionPage: React.FC<SubscriptionPageProps> = ({ shopProfile, onSubs
                             fontFamily: 'inherit',
                         }}
                     >
-                        {subscribing === 'basic' ? 'Processing...' : shopProfile.planId === 'basic' && isActive ? 'Active' : 'Get Basic'}
+                        {shopProfile.planId === 'basic' && isActive ? 'Active' : (subscribing === 'basic' ? 'Processing...' : 'Get Basic')}
                     </button>
                 </div>
 
@@ -215,7 +393,7 @@ const SubscriptionPage: React.FC<SubscriptionPageProps> = ({ shopProfile, onSubs
                         <span style={{ fontSize: '14px', color: 'rgba(255,255,255,0.5)', fontWeight: 500, marginLeft: '4px' }}>/year</span>
                     </div>
                     <div style={{ flex: 1, marginBottom: '24px' }}>
-                        {['12 months duration', 'All Basic features', 'SP Management', 'Payment tracking', 'WhatsApp notifications', 'Priority support'].map(f => (
+                        {['12-Month Duration', 'All Features', 'All Products Catalog', 'Pending Product Manager', 'SP Management', 'Customer Data Manager', 'Payment Tracking', 'Daily Revenue Stats', 'Unlimited Bills Generation', 'WhatsApp Notifications', 'Priority Support'].map(f => (
                             <div key={f} style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '12px' }}>
                                 <div style={{ width: '20px', height: '20px', borderRadius: '50%', background: 'rgba(136,222,125,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                                     <Check size={12} color="#88DE7D" strokeWidth={3} />
@@ -238,7 +416,7 @@ const SubscriptionPage: React.FC<SubscriptionPageProps> = ({ shopProfile, onSubs
                             fontFamily: 'inherit',
                         }}
                     >
-                        {subscribing === 'pro' ? 'Processing...' : shopProfile.planId === 'pro' && isActive ? 'Active' : 'Get Pro'}
+                        {shopProfile.planId === 'pro' && isActive ? 'Active' : (subscribing === 'pro' ? 'Processing...' : 'Get Pro')}
                     </button>
                 </div>
 
@@ -288,7 +466,7 @@ const SubscriptionPage: React.FC<SubscriptionPageProps> = ({ shopProfile, onSubs
                         <span style={{ fontSize: '13px', fontWeight: 600, color: '#6B7280', whiteSpace: 'nowrap' }}>Duration:</span>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flex: 1 }}>
                             <button
-                                onClick={() => setEnterpriseMonths(m => Math.max(1, m - 1))}
+                                onClick={() => setEnterpriseMonths(m => Math.max(2, m - 1))}
                                 style={{
                                     width: '32px', height: '32px', borderRadius: '8px',
                                     background: 'white', border: '1px solid #E5E7EB',
@@ -300,12 +478,12 @@ const SubscriptionPage: React.FC<SubscriptionPageProps> = ({ shopProfile, onSubs
                             </button>
                             <input
                                 type="number"
-                                min={1}
+                                min={2}
                                 max={36}
                                 value={enterpriseMonths}
                                 onChange={(e) => {
                                     const v = parseInt(e.target.value);
-                                    if (v >= 1 && v <= 36) setEnterpriseMonths(v);
+                                    if (v >= 2 && v <= 36) setEnterpriseMonths(v);
                                 }}
                                 style={{
                                     width: '48px', textAlign: 'center',
@@ -335,7 +513,7 @@ const SubscriptionPage: React.FC<SubscriptionPageProps> = ({ shopProfile, onSubs
                     </p>
 
                     <div style={{ flex: 1, marginBottom: '24px' }}>
-                        {['Custom duration', 'All Pro features', 'Bulk pricing', 'Dedicated support'].map(f => (
+                        {['Custom Duration', 'All Features', 'All Products Catalog', 'Pending Product Manager', 'SP Management', 'Customer Data Manager', 'Payment Tracking', 'Daily Revenue Stats', 'Unlimited Bills Generation', 'WhatsApp Notifications', 'Customer Support'].map(f => (
                             <div key={f} style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '12px' }}>
                                 <div style={{ width: '20px', height: '20px', borderRadius: '50%', background: '#F3E8FF', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                                     <Check size={12} color="#7C3AED" strokeWidth={3} />
@@ -358,7 +536,7 @@ const SubscriptionPage: React.FC<SubscriptionPageProps> = ({ shopProfile, onSubs
                             fontFamily: 'inherit',
                         }}
                     >
-                        {subscribing === 'enterprise' ? 'Processing...' : shopProfile.planId === 'enterprise' && isActive ? 'Active' : 'Get Enterprise'}
+                        {shopProfile.planId === 'enterprise' && isActive ? 'Active' : (subscribing === 'enterprise' ? 'Processing...' : 'Get Enterprise')}
                     </button>
                 </div>
             </div>
@@ -368,8 +546,61 @@ const SubscriptionPage: React.FC<SubscriptionPageProps> = ({ shopProfile, onSubs
                 textAlign: 'center', marginTop: '40px', fontSize: '13px',
                 color: '#9CA3AF', fontWeight: 500,
             }}>
-                Payment integration coming soon. Plans activate instantly for now.
+                Secure Payments Powered by Razorpay.
             </p>
+
+            {/* Trial Request Modal */}
+            {showTrialModal && (
+                <div style={{
+                    position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+                    background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    zIndex: 1000, padding: '20px',
+                }}>
+                    <div style={{
+                        background: 'white', borderRadius: '20px', width: '100%', maxWidth: '400px',
+                        padding: '32px', boxShadow: '0 10px 40px rgba(0,0,0,0.2)',
+                    }}>
+                        <h2 style={{ fontSize: '24px', fontWeight: 800, margin: '0 0 16px', color: '#111617' }}>Request Free Trial</h2>
+                        <p style={{ fontSize: '14px', color: '#6B7280', margin: '0 0 24px' }}>Verify your details to request an admin-approved free trial.</p>
+                        
+                        <form onSubmit={handleRequestTrial}>
+                            <div style={{ marginBottom: '16px' }}>
+                                <label style={{ display: 'block', fontSize: '12px', fontWeight: 700, color: '#4B5563', marginBottom: '8px' }}>Shop Name</label>
+                                <input 
+                                    type="text" 
+                                    value={trialForm.name} 
+                                    onChange={e => setTrialForm({...trialForm, name: e.target.value})} 
+                                    style={{ width: '100%', padding: '12px', borderRadius: '8px', border: '1px solid #E5E7EB', fontSize: '14px', outline: 'none' }}
+                                    required 
+                                />
+                            </div>
+                            <div style={{ marginBottom: '24px' }}>
+                                <label style={{ display: 'block', fontSize: '12px', fontWeight: 700, color: '#4B5563', marginBottom: '8px' }}>Phone Number</label>
+                                <input 
+                                    type="text" 
+                                    value={trialForm.phone} 
+                                    onChange={e => setTrialForm({...trialForm, phone: e.target.value})} 
+                                    style={{ width: '100%', padding: '12px', borderRadius: '8px', border: '1px solid #E5E7EB', fontSize: '14px', outline: 'none' }}
+                                    required 
+                                />
+                            </div>
+                            
+                            <div style={{ display: 'flex', gap: '12px' }}>
+                                <button type="button" onClick={() => setShowTrialModal(false)} style={{
+                                    flex: 1, padding: '12px', background: '#F3F4F6', color: '#4B5563',
+                                    border: 'none', borderRadius: '8px', fontWeight: 600, cursor: 'pointer'
+                                }}>Cancel</button>
+                                <button type="submit" disabled={subscribing === 'trial'} style={{
+                                    flex: 1, padding: '12px', background: '#FF416C', color: 'white',
+                                    border: 'none', borderRadius: '8px', fontWeight: 600, cursor: 'pointer'
+                                }}>
+                                    {subscribing === 'trial' ? 'Submitting...' : 'Submit'}
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };

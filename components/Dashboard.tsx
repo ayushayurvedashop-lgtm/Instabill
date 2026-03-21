@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { AreaChart, Area, XAxis, Tooltip, ResponsiveContainer } from 'recharts';
-import { TrendingUp, PieChart, ShoppingCart, Users, Calendar, MoreHorizontal, ChevronLeft, ChevronRight, Printer, Banknote, Smartphone } from 'lucide-react';
+import { TrendingUp, PieChart, ShoppingCart, Users, Calendar, MoreHorizontal, ChevronLeft, ChevronRight, Printer, Banknote, Smartphone, Crown } from 'lucide-react';
 import { store } from '../store';
-import { Product, Bill } from '../types';
+import { Product, Bill, ShopProfile } from '../types';
 import { getLocalDateString } from '../lib/utils';
 import BillDetailModal from './BillDetailModal';
 import DailyStatsModal from './DailyStatsModal';
@@ -12,9 +12,10 @@ interface DashboardProps {
   setActiveView?: (view: string) => void;
   onEditBill?: (bill: Bill) => void;
   searchQuery?: string;
+  shopProfile?: ShopProfile | null;
 }
 
-const Dashboard: React.FC<DashboardProps> = ({ setActiveView, onEditBill, searchQuery = '' }) => {
+const Dashboard: React.FC<DashboardProps> = ({ setActiveView, onEditBill, searchQuery = '', shopProfile }) => {
   const [timeRange, setTimeRange] = useState<'Week' | 'Month' | 'Year' | 'Custom'>('Month');
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [showDatePicker, setShowDatePicker] = useState(false);
@@ -29,6 +30,10 @@ const Dashboard: React.FC<DashboardProps> = ({ setActiveView, onEditBill, search
   // Responsive chart height - 200px on mobile, 250px on desktop
   const [chartHeight, setChartHeight] = useState(typeof window !== 'undefined' && window.innerWidth >= 768 ? 250 : 200);
 
+  // Subscription Warning State
+  const [showExpiryWarning, setShowExpiryWarning] = useState(false);
+  const [daysRemaining, setDaysRemaining] = useState<number | null>(null);
+
   useEffect(() => {
     const handleResize = () => {
       setChartHeight(window.innerWidth >= 768 ? 250 : 200);
@@ -37,6 +42,31 @@ const Dashboard: React.FC<DashboardProps> = ({ setActiveView, onEditBill, search
     handleResize(); // Set initial value
     return () => window.removeEventListener('resize', handleResize);
   }, []);
+
+  // Check Subscription Expiry
+  useEffect(() => {
+    if (shopProfile?.subscriptionEnd) {
+      const msPerDay = 1000 * 60 * 60 * 24;
+      const end = new Date(shopProfile.subscriptionEnd);
+      const now = new Date();
+      const remaining = Math.ceil((end.getTime() - now.getTime()) / msPerDay);
+
+      if (remaining <= 20 && remaining > 0) {
+        setDaysRemaining(remaining);
+        
+        // Show the banner persistently if within 20 days
+        setShowExpiryWarning(true);
+        
+        // Check if user dismissed it *just for this session*
+        // We removed localStorage here as requested, so it shows on refresh.
+        // It will only hide if the user clicks X during the *current* session/page load.
+      }
+    }
+  }, [shopProfile]);
+
+  const dismissWarning = () => {
+      setShowExpiryWarning(false);
+  };
 
   const [recentBills, setRecentBills] = useState<Bill[]>([]);
   const [products, setProducts] = useState<Product[]>(store.getProducts());
@@ -324,6 +354,45 @@ const Dashboard: React.FC<DashboardProps> = ({ setActiveView, onEditBill, search
           <span className="md:ml-2 text-transparent bg-clip-text bg-gradient-to-r from-green-600 to-[#21776A]">Welcome back!</span>
         </h1>
       </div>
+
+      {/* Subscription Expiry Warning Banner */}
+      {showExpiryWarning && daysRemaining !== null && (
+        <div className="mx-1 md:mx-2 mb-4 bg-orange-50 border border-orange-200 rounded-2xl p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-sm relative overflow-hidden">
+            {/* Absolute accent bar */}
+            <div className="absolute left-0 top-0 bottom-0 w-1 bg-orange-500"></div>
+            
+            <div className="flex items-center gap-3 z-10">
+                <div className="w-10 h-10 rounded-xl bg-orange-100 flex items-center justify-center text-orange-600 shrink-0">
+                    <Crown size={20} strokeWidth={2.5} />
+                </div>
+                <div>
+                    <h3 className="text-[#12332A] font-bold text-sm md:text-base">Your subscription is expiring soon!</h3>
+                    <p className="text-orange-700/80 text-xs md:text-sm font-medium mt-0.5">
+                        Only <span className="font-extrabold text-orange-600">{daysRemaining} days</span> remaining. Renew now to avoid interruption.
+                    </p>
+                </div>
+            </div>
+            
+            <div className="flex items-center gap-3 w-full sm:w-auto z-10">
+                <button 
+                  onClick={() => {
+                      dismissWarning();
+                      if (setActiveView) setActiveView('settings');
+                  }}
+                  className="flex-1 sm:flex-none px-5 py-2.5 bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white text-xs font-bold rounded-xl transition-all shadow-sm shadow-orange-500/20 whitespace-nowrap"
+                >
+                    View Plan Options
+                </button>
+                <button 
+                  onClick={dismissWarning}
+                  className="p-2.5 text-orange-400 hover:bg-orange-100 hover:text-orange-600 rounded-xl transition-colors"
+                  title="Dismiss for today"
+                >
+                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                </button>
+            </div>
+        </div>
+      )}
 
       {/* Hero Section - Sales Trends */}
       <section className="bg-white rounded-3xl p-6 md:p-8 shadow-sm border border-gray-100 mb-8 relative overflow-hidden">

@@ -144,16 +144,21 @@ export interface ShopProfile {
   phone: string;
   ownerUid: string; // Firebase Auth UID
   createdAt: string;
-  subscriptionStatus: 'active' | 'trial' | 'expired' | 'suspended';
+  subscriptionStatus: 'active' | 'trial' | 'expired' | 'suspended' | 'none';
   planId?: string; // 'basic', 'pro', 'enterprise'
   currentPeriodEnd?: string; // ISO date string
   subscriptionStart?: string; // ISO date string
   subscriptionEnd?: string; // ISO date string
   planDurationMonths?: number; // For enterprise custom duration
+  trialStatus?: 'none' | 'pending' | 'approved' | 'rejected';
+  trialApprovedNotified?: boolean;
 }
 
 export interface PlanConfig {
   basicPrice: number;          // e.g. 499 (1 month)
   proPrice: number;            // e.g. 3999 (12 months)
   enterpriseMonthlyPrice: number; // e.g. 399 per month
+  extendBasicPrice: number;    // e.g. 399 (+1 month extension)
+  extendProPrice: number;      // e.g. 2999 (+12 months extension)
+  extendCustomMonthlyPrice: number; // e.g. 349 per month extension
 }

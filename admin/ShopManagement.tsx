@@ -49,7 +49,7 @@ const ShopManagement: React.FC<Props> = ({ shops, setShops, loading }) => {
 
     // Shop Detail Panel
     const [selectedShop, setSelectedShop] = useState<ShopProfile | null>(null);
-    const [editForm, setEditForm] = useState({ shopName: '', address: '', phone: '', planId: '', subscriptionStatus: '' });
+    const [editForm, setEditForm] = useState({ shopName: '', address: '', phone: '', planId: '', subscriptionStatus: '', subscriptionStart: '', subscriptionEnd: '', planDurationMonths: 1 });
     const [editLoading, setEditLoading] = useState(false);
     const [editSuccess, setEditSuccess] = useState('');
 
@@ -97,6 +97,9 @@ const ShopManagement: React.FC<Props> = ({ shops, setShops, loading }) => {
             phone: shop.phone,
             planId: shop.planId || 'basic',
             subscriptionStatus: shop.subscriptionStatus,
+            subscriptionStart: shop.subscriptionStart ? shop.subscriptionStart.split('T')[0] : '',
+            subscriptionEnd: shop.subscriptionEnd ? shop.subscriptionEnd.split('T')[0] : '',
+            planDurationMonths: shop.planDurationMonths || 1,
         });
         setEditSuccess('');
     };
@@ -113,14 +116,96 @@ const ShopManagement: React.FC<Props> = ({ shops, setShops, loading }) => {
                 phone: editForm.phone,
                 planId: editForm.planId,
                 subscriptionStatus: editForm.subscriptionStatus as any,
+                subscriptionStart: editForm.subscriptionStart ? new Date(editForm.subscriptionStart).toISOString() : undefined,
+                subscriptionEnd: editForm.subscriptionEnd ? new Date(editForm.subscriptionEnd).toISOString() : undefined,
+                planDurationMonths: editForm.planDurationMonths,
             };
             await updateDoc(doc(db, 'shops', selectedShop.id), updates);
-            setShops(prev => prev.map(s => s.id === selectedShop.id ? { ...s, ...updates } : s));
-            setSelectedShop(prev => prev ? { ...prev, ...updates } : prev);
+            const updatedShop = { ...selectedShop, ...updates };
+            setShops(prev => prev.map(s => s.id === selectedShop.id ? updatedShop : s));
+            setSelectedShop(updatedShop as ShopProfile);
             setEditSuccess('Changes saved successfully!');
             setTimeout(() => setEditSuccess(''), 3000);
         } catch (err) {
             console.error('Failed to update shop', err);
+        }
+        setEditLoading(false);
+    };
+
+    // Quick extend subscription
+    const handleExtendSubscription = async (months: number) => {
+        if (!selectedShop) return;
+        setEditLoading(true);
+        try {
+            const currentEnd = selectedShop.subscriptionEnd ? new Date(selectedShop.subscriptionEnd) : new Date();
+            // If expired, extend from now
+            const baseDate = currentEnd > new Date() ? currentEnd : new Date();
+            const newEnd = new Date(baseDate);
+            newEnd.setMonth(newEnd.getMonth() + months);
+
+            const updates: Partial<ShopProfile> = {
+                subscriptionEnd: newEnd.toISOString(),
+                currentPeriodEnd: newEnd.toISOString(),
+                subscriptionStatus: 'active',
+            };
+
+            // If no start date, set it to now
+            if (!selectedShop.subscriptionStart) {
+                updates.subscriptionStart = new Date().toISOString();
+            }
+
+            await updateDoc(doc(db, 'shops', selectedShop.id), updates);
+            const updatedShop = { ...selectedShop, ...updates };
+            setShops(prev => prev.map(s => s.id === selectedShop.id ? updatedShop : s));
+            setSelectedShop(updatedShop as ShopProfile);
+            // Update edit form dates
+            setEditForm(f => ({
+                ...f,
+                subscriptionEnd: newEnd.toISOString().split('T')[0],
+                subscriptionStatus: 'active',
+                subscriptionStart: updates.subscriptionStart ? updates.subscriptionStart.split('T')[0] : f.subscriptionStart,
+            }));
+            setEditSuccess(`Extended by ${months} month${months > 1 ? 's' : ''}!`);
+            setTimeout(() => setEditSuccess(''), 3000);
+        } catch (err) {
+            console.error('Failed to extend subscription', err);
+        }
+        setEditLoading(false);
+    };
+
+    // Approve Free Trial
+    const handleApproveTrial = async () => {
+        if (!selectedShop) return;
+        setEditLoading(true);
+        try {
+            const now = new Date();
+            const newEnd = new Date(now);
+            newEnd.setDate(newEnd.getDate() + 7); // Give 7 days trial
+
+            const updates: Partial<ShopProfile> = {
+                subscriptionEnd: newEnd.toISOString(),
+                subscriptionStart: now.toISOString(),
+                currentPeriodEnd: newEnd.toISOString(),
+                subscriptionStatus: 'trial',
+                trialStatus: 'approved',
+                trialApprovedNotified: false,
+                planId: 'basic',
+            };
+
+            await updateDoc(doc(db, 'shops', selectedShop.id), updates);
+            const updatedShop = { ...selectedShop, ...updates };
+            setShops(prev => prev.map(s => s.id === selectedShop.id ? updatedShop : s));
+            setSelectedShop(updatedShop as ShopProfile);
+            setEditForm(f => ({
+                ...f,
+                subscriptionEnd: newEnd.toISOString().split('T')[0],
+                subscriptionStatus: 'trial',
+                subscriptionStart: updates.subscriptionStart ? updates.subscriptionStart.split('T')[0] : f.subscriptionStart,
+            }));
+            setEditSuccess('Free Trial Approved for 7 Days!');
+            setTimeout(() => setEditSuccess(''), 3000);
+        } catch (err) {
+            console.error('Failed to approve trial', err);
         }
         setEditLoading(false);
     };
@@ -338,6 +423,11 @@ const ShopManagement: React.FC<Props> = ({ shops, setShops, loading }) => {
                                                             <span className="status-badge__dot" />
                                                             {statusLabel}
                                                         </span>
+                                                        {shop.trialStatus === 'pending' && (
+                                                            <span style={{ display: 'inline-block', marginLeft: '6px', fontSize: '10px', background: '#FEF08A', color: '#854D0E', padding: '2px 6px', borderRadius: '10px', fontWeight: 700 }}>
+                                                                Trial Req
+                                                            </span>
+                                                        )}
                                                     </td>
                                                     <td style={{ fontSize: '13px', color: '#64748b' }}>
                                                         {new Date(shop.createdAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
@@ -410,6 +500,108 @@ const ShopManagement: React.FC<Props> = ({ shops, setShops, loading }) => {
                                 </div>
                             </div>
 
+                            {/* Pending Trial Banner */}
+                            {selectedShop.trialStatus === 'pending' && (
+                                <div style={{
+                                    padding: '16px', borderRadius: '12px', background: '#FEFCE8',
+                                    border: '1px solid #FEF08A', marginBottom: '24px', display: 'flex',
+                                    flexDirection: 'column', gap: '12px'
+                                }}>
+                                    <div>
+                                        <h4 style={{ fontSize: '14px', fontWeight: 700, color: '#854D0E', margin: '0 0 4px' }}>Free Trial Request</h4>
+                                        <p style={{ fontSize: '13px', color: '#A16207', margin: 0, lineHeight: 1.4 }}>
+                                            This shop has requested a free trial. Please verify the shop details and approve to grant 7-days of full access.
+                                        </p>
+                                    </div>
+                                    <button 
+                                        onClick={handleApproveTrial} 
+                                        disabled={editLoading}
+                                        style={{
+                                            background: '#EAB308', color: 'white', border: 'none', padding: '10px',
+                                            borderRadius: '8px', fontSize: '13px', fontWeight: 700, cursor: 'pointer',
+                                            opacity: editLoading ? 0.7 : 1
+                                        }}
+                                    >
+                                        Approve Free Trial
+                                    </button>
+                                </div>
+                            )}
+
+                            {/* Subscription Overview Card */}
+                            {(() => {
+                                const subEnd = selectedShop.subscriptionEnd ? new Date(selectedShop.subscriptionEnd) : null;
+                                const subStart = selectedShop.subscriptionStart ? new Date(selectedShop.subscriptionStart) : null;
+                                const nowMs = Date.now();
+                                const daysLeft = subEnd ? Math.ceil((subEnd.getTime() - nowMs) / (1000 * 60 * 60 * 24)) : 0;
+                                const totalDays = subStart && subEnd ? Math.ceil((subEnd.getTime() - subStart.getTime()) / (1000 * 60 * 60 * 24)) : 0;
+                                const pct = totalDays > 0 ? Math.max(0, Math.min(100, Math.round((Math.max(0, daysLeft) / totalDays) * 100))) : 0;
+                                const plan = (selectedShop.planId || 'basic');
+                                const planLabel = plan.charAt(0).toUpperCase() + plan.slice(1);
+                                const isActive = (selectedShop.subscriptionStatus === 'active' || selectedShop.subscriptionStatus === 'trial') && daysLeft > 0;
+
+                                return (
+                                    <div style={{
+                                        padding: '16px', borderRadius: '12px',
+                                        background: isActive ? 'var(--status-active-bg)' : 'var(--status-expired-bg)',
+                                        border: `1px solid ${isActive ? '#bbf7d0' : '#fecaca'}`,
+                                    }}>
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+                                            <div>
+                                                <span style={{ fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: isActive ? 'var(--status-active-text)' : 'var(--status-expired-text)' }}>
+                                                    {planLabel} Plan
+                                                </span>
+                                            </div>
+                                            <span style={{
+                                                padding: '3px 10px', borderRadius: '20px', fontSize: '11px', fontWeight: 700,
+                                                background: isActive ? '#dcfce7' : '#fee2e2',
+                                                color: isActive ? '#166534' : '#991b1b',
+                                            }}>
+                                                {isActive ? 'Active' : daysLeft <= 0 ? 'Expired' : selectedShop.subscriptionStatus}
+                                            </span>
+                                        </div>
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', fontWeight: 600, color: 'var(--admin-text-secondary)', marginBottom: '6px' }}>
+                                            <span>{daysLeft > 0 ? `${daysLeft} days left` : 'Expired'}</span>
+                                            <span>{pct}%</span>
+                                        </div>
+                                        <div style={{ height: '6px', background: '#e5e7eb', borderRadius: '100px', overflow: 'hidden' }}>
+                                            <div style={{
+                                                height: '100%', borderRadius: '100px',
+                                                width: `${pct}%`,
+                                                background: isActive ? 'var(--admin-primary)' : 'var(--status-expired)',
+                                                transition: 'width 0.5s ease',
+                                            }} />
+                                        </div>
+                                    </div>
+                                );
+                            })()}
+
+                            {/* Quick Extend */}
+                            <div className="admin-detail-panel__section">
+                                <h3 className="admin-detail-panel__section-title">Quick Extend</h3>
+                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: '8px' }}>
+                                    {[1, 3, 6, 12].map(m => (
+                                        <button
+                                            key={m}
+                                            onClick={() => handleExtendSubscription(m)}
+                                            disabled={editLoading}
+                                            style={{
+                                                padding: '10px 6px', border: '1px solid var(--admin-border)',
+                                                borderRadius: '10px', background: 'var(--admin-surface)',
+                                                cursor: editLoading ? 'not-allowed' : 'pointer',
+                                                fontSize: '13px', fontWeight: 700, color: 'var(--admin-primary)',
+                                                fontFamily: 'inherit', transition: 'all 0.15s ease',
+                                                textAlign: 'center', lineHeight: 1.3,
+                                            }}
+                                            onMouseOver={e => { if (!editLoading) { e.currentTarget.style.background = 'var(--admin-primary-light)'; e.currentTarget.style.borderColor = 'var(--admin-primary)'; } }}
+                                            onMouseOut={e => { e.currentTarget.style.background = 'var(--admin-surface)'; e.currentTarget.style.borderColor = 'var(--admin-border)'; }}
+                                        >
+                                            +{m}<br />
+                                            <span style={{ fontSize: '10px', fontWeight: 500, color: 'var(--admin-text-muted)' }}>mo{m > 1 ? 's' : ''}</span>
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+
                             {/* Editable fields */}
                             <div className="admin-detail-panel__section">
                                 <h3 className="admin-detail-panel__section-title">General Information</h3>
@@ -465,18 +657,34 @@ const ShopManagement: React.FC<Props> = ({ shops, setShops, loading }) => {
                                     </select>
                                 </div>
 
-                                {selectedShop.subscriptionStart && (
-                                    <div className="admin-detail-panel__info-row">
-                                        <span>Started</span>
-                                        <span>{new Date(selectedShop.subscriptionStart).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}</span>
-                                    </div>
-                                )}
-                                {selectedShop.subscriptionEnd && (
-                                    <div className="admin-detail-panel__info-row">
-                                        <span>Expires</span>
-                                        <span>{new Date(selectedShop.subscriptionEnd).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}</span>
-                                    </div>
-                                )}
+                                <div className="admin-detail-panel__field">
+                                    <label>Duration (months)</label>
+                                    <input
+                                        type="number"
+                                        min={1}
+                                        max={36}
+                                        value={editForm.planDurationMonths}
+                                        onChange={e => setEditForm(f => ({ ...f, planDurationMonths: parseInt(e.target.value) || 1 }))}
+                                    />
+                                </div>
+
+                                <div className="admin-detail-panel__field">
+                                    <label>Start Date</label>
+                                    <input
+                                        type="date"
+                                        value={editForm.subscriptionStart}
+                                        onChange={e => setEditForm(f => ({ ...f, subscriptionStart: e.target.value }))}
+                                    />
+                                </div>
+
+                                <div className="admin-detail-panel__field">
+                                    <label>End Date</label>
+                                    <input
+                                        type="date"
+                                        value={editForm.subscriptionEnd}
+                                        onChange={e => setEditForm(f => ({ ...f, subscriptionEnd: e.target.value }))}
+                                    />
+                                </div>
                             </div>
 
                             {/* Save */}

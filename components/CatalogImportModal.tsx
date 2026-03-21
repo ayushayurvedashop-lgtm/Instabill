@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { X, Check, AlertTriangle, ArrowRight, Loader2, PackagePlus, RefreshCw, ScanSearch, Globe, Link, Upload } from 'lucide-react';
 import { Product } from '../types';
-import { ASCLEPIUS_CATALOG } from '../asclepiusData';
 import { store } from '../store';
+import { db } from '../firebaseConfig';
+import { collection, getDocs } from 'firebase/firestore';
 
 
 interface CatalogImportModalProps {
@@ -91,50 +92,66 @@ export const CatalogImportModal: React.FC<CatalogImportModalProps> = ({ onClose 
     reader.readAsText(file);
   };
 
-  // Simplified Scanning Logic (Removed AI/Gemini)
+  // Scanning Logic — fetches from Firestore default_catalog
   useEffect(() => {
     const scan = async () => {
-      // Direct use of offline catalog
-      await new Promise(resolve => setTimeout(resolve, 1500)); // Fake scan delay
-
-      const catalogData = ASCLEPIUS_CATALOG;
-      setIsFallback(true); // Technically fallback since no AI
-
-      const currentInventory = store.getProducts();
-
-      const analyzedItems: ScannedItem[] = catalogData.map(catalogItem => {
-        const existing = currentInventory.find(
-          p => p.name.toLowerCase() === catalogItem.name.toLowerCase()
-        );
-
-        if (!existing) {
-          return { ...catalogItem, status: 'new', selected: true };
-        }
-
-        // Check for price changes
-        if (existing.mrp !== catalogItem.mrp || existing.dp !== catalogItem.dp || existing.sp !== catalogItem.sp) {
+      try {
+        // Fetch default catalog from Firestore
+        const snap = await getDocs(collection(db, 'default_catalog'));
+        const catalogData: Omit<Product, 'id'>[] = snap.docs.map(d => {
+          const data = d.data();
           return {
-            ...catalogItem,
-            status: 'update',
-            selected: true,
-            oldData: { mrp: existing.mrp, dp: existing.dp, sp: existing.sp }
+            name: data.name || '',
+            category: data.category || '',
+            mrp: data.mrp || 0,
+            dp: data.dp || 0,
+            sp: data.sp || 0,
+            stock: 0,
           };
-        }
+        });
 
-        return { ...catalogItem, status: 'same', selected: false };
-      });
+        setIsFallback(false);
 
-      // Filter to show only relevant changes or new items
-      const changesOnly = analyzedItems.filter(i => i.status !== 'same');
+        const currentInventory = store.getProducts();
 
-      setStats({
-        new: analyzedItems.filter(i => i.status === 'new').length,
-        update: analyzedItems.filter(i => i.status === 'update').length,
-        same: analyzedItems.filter(i => i.status === 'same').length
-      });
+        const analyzedItems: ScannedItem[] = catalogData.map(catalogItem => {
+          const existing = currentInventory.find(
+            p => p.name.toLowerCase() === catalogItem.name.toLowerCase()
+          );
 
-      setScannedItems(changesOnly);
-      setStatus('review');
+          if (!existing) {
+            return { ...catalogItem, status: 'new', selected: true };
+          }
+
+          // Check for price changes
+          if (existing.mrp !== catalogItem.mrp || existing.dp !== catalogItem.dp || existing.sp !== catalogItem.sp) {
+            return {
+              ...catalogItem,
+              status: 'update',
+              selected: true,
+              oldData: { mrp: existing.mrp, dp: existing.dp, sp: existing.sp }
+            };
+          }
+
+          return { ...catalogItem, status: 'same', selected: false };
+        });
+
+        // Filter to show only relevant changes or new items
+        const changesOnly = analyzedItems.filter(i => i.status !== 'same');
+
+        setStats({
+          new: analyzedItems.filter(i => i.status === 'new').length,
+          update: analyzedItems.filter(i => i.status === 'update').length,
+          same: analyzedItems.filter(i => i.status === 'same').length
+        });
+
+        setScannedItems(changesOnly);
+        setStatus('review');
+      } catch (e) {
+        console.error('Failed to fetch default catalog', e);
+        setIsFallback(true);
+        setStatus('review');
+      }
     };
 
     scan();

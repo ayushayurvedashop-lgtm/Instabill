@@ -2,6 +2,7 @@ import { Bill } from '../types';
 import { storage } from '../firebaseConfig';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { jsPDF } from 'jspdf';
+import { store } from '../store';
 
 /**
  * Generates a simple text-based PDF invoice and uploads to Firebase Storage.
@@ -22,9 +23,10 @@ export const generateAndUploadInvoicePDF = async (bill: Bill): Promise<string | 
         pdf.text(`Date: ${new Date(bill.date).toLocaleDateString()}`, pageWidth - 60, 25);
 
         // Shop Name
+        const settings = store.getSettings();
         pdf.setFontSize(14);
         pdf.setFont('helvetica', 'bold');
-        pdf.text('Ayush Ayurveda', pageWidth - 60, 35);
+        pdf.text(settings.shopName, pageWidth - 60, 35);
 
         // Customer Info
         pdf.setFontSize(11);
@@ -80,7 +82,7 @@ export const generateAndUploadInvoicePDF = async (bill: Bill): Promise<string | 
         y += 15;
         pdf.setFontSize(9);
         pdf.setFont('helvetica', 'normal');
-        pdf.text('Thanks for visiting Ayush Ayurveda!', 20, y);
+        pdf.text(`Thanks for visiting ${settings.shopName}!`, 20, y);
 
         // Convert to Blob
         const pdfBlob = pdf.output('blob');

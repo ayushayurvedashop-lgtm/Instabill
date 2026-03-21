@@ -1,37 +1,21 @@
 import React, { useState, useEffect } from 'react';
-import { Database, Trash2, AlertTriangle, Loader2, CloudOff, Video, Plus, X, Link as LinkIcon, Upload, MessageCircle } from 'lucide-react';
+import { Database, Trash2, AlertTriangle, Loader2, MessageCircle, User, FileText, Users, Package, Crown, Calendar, MapPin, Phone, Shield, LogOut } from 'lucide-react';
 import { store } from '../store';
-import { db, storage } from '../firebaseConfig';
-import { collection, addDoc, deleteDoc, doc, onSnapshot, query, orderBy, updateDoc } from 'firebase/firestore';
-import { ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage';
+import { db } from '../firebaseConfig';
 import { ShopProfile } from '../types';
 import { updateShopProfile } from '../services/authService';
 
-interface ResultVideo {
-  id: string;
-  title: string;
-  url: string;
-  type: 'youtube' | 'uploaded';
-  isShowcase?: boolean;
-}
+type WipeTarget = 'bills' | 'customers' | 'stock' | null;
 
 interface SettingsProps {
   shopProfile?: ShopProfile | null;
+  onLogout: () => void;
 }
 
-const Settings: React.FC<SettingsProps> = ({ shopProfile }) => {
+const Settings: React.FC<SettingsProps> = ({ shopProfile, onLogout }) => {
   const [isResetting, setIsResetting] = useState(false);
-  const [showWipeConfirm, setShowWipeConfirm] = useState(false);
+  const [wipeTarget, setWipeTarget] = useState<WipeTarget>(null);
   const [wipeCloud, setWipeCloud] = useState(false);
-
-  // Video Management State
-  const [videos, setVideos] = useState<ResultVideo[]>([]);
-  const [isAddingVideo, setIsAddingVideo] = useState(false);
-  const [videoTitle, setVideoTitle] = useState('');
-  const [videoType, setVideoType] = useState<'youtube' | 'uploaded'>('youtube');
-  const [youtubeLink, setYoutubeLink] = useState('');
-  const [videoFile, setVideoFile] = useState<File | null>(null);
-  const [isUploading, setIsUploading] = useState(false);
 
   // Shop Info State — prefer shopProfile if available, fall back to store settings
   const [shopName, setShopName] = useState(shopProfile?.shopName || store.getSettings().shopName);
@@ -40,55 +24,47 @@ const Settings: React.FC<SettingsProps> = ({ shopProfile }) => {
 
   // Preferences State
   const [defaultBillingMode, setDefaultBillingMode] = useState(store.getSettings().defaultBillingMode || 'DP');
-  const [whatsappEnabled, setWhatsappEnabled] = useState(store.getSettings().whatsappEnabled !== false); // Default to true
+  const [whatsappEnabled, setWhatsappEnabled] = useState(store.getSettings().whatsappEnabled !== false);
 
   useEffect(() => {
-    const q = query(collection(db, 'result_videos'), orderBy('createdAt', 'desc'));
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const videoData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as ResultVideo));
-      setVideos(videoData);
-    });
-
     const unsubscribeStore = store.subscribe(() => {
       const s = store.getSettings();
-      // Only update if not currently editing (optional, but good for UX? 
-      // Actually simple sync is fine, maybe check if equal)
-      // If user is typing, we might overwrite. 
-      // But typically settings don't change often by others while one is typing.
-      // Let's just sync for now, assuming conflict is rare with single admin likely.
-      // Actually, if I update state here, user input might get clobbered if typing.
-      // Better to only sync if we are NOT editing? 
-      // Or just let it be. 'setShopName' will re-render.
-      // If I am typing 'A', 'B', 'C', and store sends update... it might be annoying.
-      // However, store only updates if `updateSettings` is called or cloud updates.
-      // Cloud update should reflect.
-      // Let's check keys.
       if (document.activeElement?.tagName !== 'INPUT' && document.activeElement?.tagName !== 'TEXTAREA') {
-        // crude check to avoid overwriting while typing
         setShopName(s.shopName);
         setShopAddress(s.shopAddress);
       }
-      // Always sync defaultBillingMode as it's not a text input
       setDefaultBillingMode(s.defaultBillingMode || 'DP');
       setWhatsappEnabled(s.whatsappEnabled !== false);
     });
 
     return () => {
-      unsubscribe();
       unsubscribeStore();
     };
   }, []);
 
-  const handleReset = async () => {
+  const handleWipe = async () => {
+    if (!wipeTarget) return;
     setIsResetting(true);
     setTimeout(async () => {
       try {
-        const result = await store.resetDatabase(wipeCloud);
-        alert(result.message);
-        setShowWipeConfirm(false);
+        let result;
+        switch (wipeTarget) {
+          case 'bills':
+            result = await store.wipeBills(wipeCloud);
+            break;
+          case 'customers':
+            result = await store.wipeCustomers(wipeCloud);
+            break;
+          case 'stock':
+            result = await store.wipeStock(wipeCloud);
+            break;
+        }
+        alert(result?.message || 'Data wiped successfully.');
+        setWipeTarget(null);
+        setWipeCloud(false);
       } catch (e) {
         console.error(e);
-        alert("Failed to reset database.");
+        alert("Failed to wipe data.");
       } finally {
         setIsResetting(false);
       }
@@ -97,9 +73,7 @@ const Settings: React.FC<SettingsProps> = ({ shopProfile }) => {
 
   const handleSaveShopInfo = async () => {
     setIsSavingShopInfo(true);
-    // Update store settings
     await store.updateSettings({ shopName, shopAddress });
-    // Also update Firestore shop profile if it exists
     if (shopProfile?.id) {
       try {
         await updateShopProfile(shopProfile.id, { shopName, address: shopAddress });
@@ -111,82 +85,73 @@ const Settings: React.FC<SettingsProps> = ({ shopProfile }) => {
     alert('Shop information saved successfully!');
   };
 
-  const handleAddVideo = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!videoTitle) return alert("Please enter a title");
-
-    setIsUploading(true);
-    try {
-      let finalUrl = '';
-
-      if (videoType === 'youtube') {
-        // Extract ID from URL if needed, or just save clean URL
-        // Simple regex for ID extraction could be added, but for now trusting input or generic embed logic
-        finalUrl = youtubeLink;
-      } else {
-        if (!videoFile) return alert("Please select a file");
-        const storageRef = ref(storage, `result_videos/${Date.now()}_${videoFile.name}`);
-        const snapshot = await uploadBytes(storageRef, videoFile);
-        finalUrl = await getDownloadURL(snapshot.ref);
-      }
-
-      await addDoc(collection(db, 'result_videos'), {
-        title: videoTitle,
-        url: finalUrl,
-        type: videoType,
-        isShowcase: false,
-        createdAt: new Date().toISOString()
-      });
-
-      setIsAddingVideo(false);
-      setVideoTitle('');
-      setYoutubeLink('');
-      setVideoFile(null);
-    } catch (error) {
-      console.error("Error adding video:", error);
-      alert("Failed to upload/add video.");
-    } finally {
-      setIsUploading(false);
+  const getStatusBadge = (status?: string) => {
+    switch (status) {
+      case 'active':
+        return <span className="px-3 py-1 rounded-full bg-green-100 text-green-700 text-xs font-bold">Active</span>;
+      case 'trial':
+        return <span className="px-3 py-1 rounded-full bg-amber-100 text-amber-700 text-xs font-bold">Trial</span>;
+      case 'expired':
+        return <span className="px-3 py-1 rounded-full bg-red-100 text-red-700 text-xs font-bold">Expired</span>;
+      case 'suspended':
+        return <span className="px-3 py-1 rounded-full bg-gray-200 text-gray-600 text-xs font-bold">Suspended</span>;
+      default:
+        return <span className="px-3 py-1 rounded-full bg-gray-100 text-gray-500 text-xs font-bold">Unknown</span>;
     }
   };
 
-  const handleDeleteVideo = async (video: ResultVideo) => {
-    if (!confirm("Are you sure you want to delete this video?")) return;
-    try {
-      await deleteDoc(doc(db, 'result_videos', video.id));
-      if (video.type === 'uploaded') {
-        const videoRef = ref(storage, video.url);
-        await deleteObject(videoRef).catch(err => console.log("Storage delete skipped or failed:", err));
-      }
-    } catch (error) {
-      console.error("Error deleting video:", error);
-      alert("Failed to delete video.");
+  const getPlanLabel = (planId?: string) => {
+    switch (planId) {
+      case 'basic': return 'Basic';
+      case 'pro': return 'Pro';
+      case 'enterprise': return 'Enterprise';
+      default: return planId || '—';
     }
   };
 
-  const toggleShowcase = async (video: ResultVideo) => {
+  const formatDate = (dateStr?: string) => {
+    if (!dateStr) return '—';
     try {
-      await updateDoc(doc(db, 'result_videos', video.id), {
-        isShowcase: !video.isShowcase
+      return new Date(dateStr).toLocaleDateString('en-IN', {
+        day: 'numeric', month: 'short', year: 'numeric'
       });
-    } catch (error) {
-      console.error("Error toggling showcase:", error);
-    }
+    } catch { return dateStr; }
+  };
+
+  const getInitials = (name: string) => {
+    return name.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2) || '?';
+  };
+
+  const WIPE_CONFIG = {
+    bills: {
+      icon: <FileText size={20} className="text-red-500" />,
+      title: 'Wipe Bills',
+      description: 'Clear all bill and sales history data.',
+      confirmTitle: 'Delete All Bills?',
+      confirmText: 'This will permanently delete all bills and sales history. This cannot be undone.',
+    },
+    customers: {
+      icon: <Users size={20} className="text-orange-500" />,
+      title: 'Wipe Customers',
+      description: 'Clear all customer records and data.',
+      confirmTitle: 'Delete All Customers?',
+      confirmText: 'This will permanently delete all customer records. This cannot be undone.',
+    },
   };
 
   return (
-    <div className="max-w-4xl mx-auto h-full overflow-y-auto pr-2 custom-scrollbar relative pb-24 md:pb-2">
+    <div className="max-w-4xl mx-auto h-full overflow-y-auto px-1 md:pr-2 custom-scrollbar relative pb-24 md:pb-2">
 
       {/* Wipe Confirmation Modal */}
-      {showWipeConfirm && (
+      {wipeTarget && (
         <div className="fixed inset-0 bg-dark/50 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-fade-in">
           <div className="bg-white rounded-3xl shadow-xl p-8 w-full max-w-md animate-modal-in">
             <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-6">
               <AlertTriangle size={32} className="text-red-600" />
             </div>
-            <h3 className="text-2xl font-bold text-dark text-center mb-2">Delete All Data?</h3>
+            <h3 className="text-2xl font-bold text-dark text-center mb-2">{WIPE_CONFIG[wipeTarget].confirmTitle}</h3>
             <p className="text-gray-500 text-center mb-6">
-              This action will <strong>permanently delete</strong> all Bills, Customers, and Products. This cannot be undone.
+              {WIPE_CONFIG[wipeTarget].confirmText}
             </p>
 
             <div className="bg-red-50 p-4 rounded-xl mb-6 flex items-start gap-3">
@@ -206,14 +171,14 @@ const Settings: React.FC<SettingsProps> = ({ shopProfile }) => {
 
             <div className="flex gap-3">
               <button
-                onClick={() => setShowWipeConfirm(false)}
+                onClick={() => { setWipeTarget(null); setWipeCloud(false); }}
                 disabled={isResetting}
                 className="flex-1 py-3 rounded-xl font-bold text-gray-500 hover:bg-gray-100 transition-colors"
               >
                 Cancel
               </button>
               <button
-                onClick={handleReset}
+                onClick={handleWipe}
                 disabled={isResetting}
                 className="flex-1 py-3 bg-red-600 text-white rounded-xl font-bold hover:bg-red-700 transition-all shadow-lg flex items-center justify-center gap-2"
               >
@@ -227,10 +192,80 @@ const Settings: React.FC<SettingsProps> = ({ shopProfile }) => {
 
       <h2 className="text-2xl font-bold text-dark mb-6">Settings</h2>
 
-      {/* Shop Information Section */}
-      <div className="bg-white rounded-3xl p-6 md:p-8 shadow-sm mb-6">
-        <h3 className="text-lg font-bold text-dark mb-6">Shop Information</h3>
+      {/* Profile Panel */}
+      <div className="bg-white rounded-3xl p-5 md:p-8 shadow-sm mb-6">
+        <h3 className="text-lg font-bold text-dark mb-6 flex items-center gap-2">
+          <User size={20} /> Profile
+        </h3>
 
+        {/* Profile Header */}
+        <div className="flex items-center gap-4 mb-6 pb-6 border-b border-gray-100">
+          <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-emerald-400 to-teal-600 flex items-center justify-center text-white text-xl font-bold shadow-lg">
+            {getInitials(shopProfile?.shopName || shopName || 'S')}
+          </div>
+          <div className="flex-1 min-w-0">
+            <h4 className="text-xl font-bold text-dark truncate">{shopProfile?.shopName || shopName || 'My Shop'}</h4>
+            <p className="text-sm text-gray-500 truncate">{shopProfile?.address || shopAddress || 'No address set'}</p>
+            {shopProfile?.subscriptionStatus && (
+              <div className="mt-1.5">{getStatusBadge(shopProfile.subscriptionStatus)}</div>
+            )}
+          </div>
+        </div>
+
+        {/* Subscription Details Grid */}
+        {shopProfile && (
+          <div className="grid grid-cols-2 lg:grid-cols-3 gap-3 md:gap-4 mb-6 pb-6 border-b border-gray-100">
+            <div className="bg-gray-50 rounded-xl p-3">
+              <div className="flex items-center gap-1.5 mb-1">
+                <Crown size={14} className="text-amber-500" />
+                <span className="text-xs font-medium text-gray-400">Plan</span>
+              </div>
+              <p className="font-bold text-dark text-sm">{getPlanLabel(shopProfile.planId)}</p>
+            </div>
+
+            <div className="bg-gray-50 rounded-xl p-3">
+              <div className="flex items-center gap-1.5 mb-1">
+                <Shield size={14} className="text-green-500" />
+                <span className="text-xs font-medium text-gray-400">Status</span>
+              </div>
+              <p className="font-bold text-dark text-sm capitalize">{shopProfile.subscriptionStatus || '—'}</p>
+            </div>
+
+            <div className="bg-gray-50 rounded-xl p-3">
+              <div className="flex items-center gap-1.5 mb-1">
+                <Phone size={14} className="text-blue-500" />
+                <span className="text-xs font-medium text-gray-400">Phone</span>
+              </div>
+              <p className="font-bold text-dark text-sm">{shopProfile.phone || '—'}</p>
+            </div>
+
+            <div className="bg-gray-50 rounded-xl p-3">
+              <div className="flex items-center gap-1.5 mb-1">
+                <Calendar size={14} className="text-indigo-500" />
+                <span className="text-xs font-medium text-gray-400">Subscription Start</span>
+              </div>
+              <p className="font-bold text-dark text-sm">{formatDate(shopProfile.subscriptionStart)}</p>
+            </div>
+
+            <div className="bg-gray-50 rounded-xl p-3">
+              <div className="flex items-center gap-1.5 mb-1">
+                <Calendar size={14} className="text-red-400" />
+                <span className="text-xs font-medium text-gray-400">Subscription End</span>
+              </div>
+              <p className="font-bold text-dark text-sm">{formatDate(shopProfile.subscriptionEnd || shopProfile.currentPeriodEnd)}</p>
+            </div>
+
+            <div className="bg-gray-50 rounded-xl p-3">
+              <div className="flex items-center gap-1.5 mb-1">
+                <Calendar size={14} className="text-gray-400" />
+                <span className="text-xs font-medium text-gray-400">Registered</span>
+              </div>
+              <p className="font-bold text-dark text-sm">{formatDate(shopProfile.createdAt)}</p>
+            </div>
+          </div>
+        )}
+
+        {/* Editable Shop Info */}
         <div className="space-y-4">
           <div>
             <label className="block text-sm font-bold text-gray-700 mb-2">Shop Name</label>
@@ -267,7 +302,7 @@ const Settings: React.FC<SettingsProps> = ({ shopProfile }) => {
             ) : (
               <>
                 <Database size={18} />
-                Save Shop Info
+                Save Profile
               </>
             )}
           </button>
@@ -275,7 +310,7 @@ const Settings: React.FC<SettingsProps> = ({ shopProfile }) => {
       </div>
 
       {/* Preferences Section */}
-      <div className="bg-white rounded-3xl p-6 md:p-8 shadow-sm mb-6">
+      <div className="bg-white rounded-3xl p-5 md:p-8 shadow-sm mb-6">
         <h3 className="text-lg font-bold text-dark mb-6 flex items-center gap-2">
           Preferences
         </h3>
@@ -337,184 +372,76 @@ const Settings: React.FC<SettingsProps> = ({ shopProfile }) => {
         </div>
       </div>
 
-      {/* Video Management Section */}
-      <div className="bg-white rounded-3xl p-8 shadow-sm mb-6">
-        <div className="flex justify-between items-center mb-6">
-          <h3 className="text-lg font-bold text-dark flex items-center gap-2">
-            <Video size={20} /> Result Gallery Manager
-          </h3>
-          <button
-            onClick={() => setIsAddingVideo(!isAddingVideo)}
-            className="bg-primary text-dark px-4 py-2 rounded-xl font-bold text-sm hover:bg-primary-hover transition-colors flex items-center gap-2"
-          >
-            {isAddingVideo ? <X size={18} /> : <Plus size={18} />}
-            {isAddingVideo ? 'Cancel' : 'Add Video'}
-          </button>
-        </div>
-
-        {isAddingVideo && (
-          <div className="bg-gray-50 p-6 rounded-2xl border border-gray-100 mb-8 animate-in slide-in-from-top duration-300">
-            <form onSubmit={handleAddVideo} className="space-y-4">
-              <div>
-                <label className="block text-xs font-bold text-gray-500 mb-1">VIDEO TITLE</label>
-                <input
-                  type="text"
-                  value={videoTitle}
-                  onChange={e => setVideoTitle(e.target.value)}
-                  className="w-full bg-white border border-gray-200 rounded-xl px-4 py-3 text-dark focus:outline-none focus:ring-2 focus:ring-primary/50"
-                  placeholder="e.g. Patient Success Story - Diabetes"
-                />
-              </div>
-
-              <div className="flex gap-4">
-                <button
-                  type="button"
-                  onClick={() => setVideoType('youtube')}
-                  className={`flex-1 py-3 rounded-xl font-bold text-sm flex items-center justify-center gap-2 transition-colors ${videoType === 'youtube' ? 'bg-red-100 text-red-600 border border-red-200' : 'bg-white border border-gray-200 text-gray-500 hover:bg-gray-100'}`}
-                >
-                  <LinkIcon size={16} /> YouTube Link
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setVideoType('uploaded')}
-                  className={`flex-1 py-3 rounded-xl font-bold text-sm flex items-center justify-center gap-2 transition-colors ${videoType === 'uploaded' ? 'bg-blue-100 text-blue-600 border border-blue-200' : 'bg-white border border-gray-200 text-gray-500 hover:bg-gray-100'}`}
-                >
-                  <Upload size={16} /> Upload File
-                </button>
-              </div>
-
-              {videoType === 'youtube' ? (
-                <div>
-                  <label className="block text-xs font-bold text-gray-500 mb-1">YOUTUBE VIDEO ID / LINK</label>
-                  <input
-                    type="text"
-                    value={youtubeLink}
-                    onChange={e => setYoutubeLink(e.target.value)}
-                    className="w-full bg-white border border-gray-200 rounded-xl px-4 py-3 text-dark focus:outline-none focus:ring-2 focus:ring-primary/50"
-                    placeholder="e.g. dQw4w9WgXcQ"
-                  />
-                </div>
-              ) : (
-                <div>
-                  <label className="block text-xs font-bold text-gray-500 mb-1">SELECT VIDEO FILE</label>
-                  <input
-                    type="file"
-                    accept="video/*"
-                    onChange={e => setVideoFile(e.target.files ? e.target.files[0] : null)}
-                    className="w-full bg-white border border-gray-200 rounded-xl px-4 py-3 text-dark focus:outline-none focus:ring-2 focus:ring-primary/50"
-                  />
-                  <p className="text-xs text-gray-400 mt-1">Maximum size 50MB suggested.</p>
-                </div>
-              )}
-
-              <button
-                type="submit"
-                disabled={isUploading}
-                className="w-full py-3 bg-dark text-white rounded-xl font-bold hover:bg-dark-light transition-all shadow-lg flex items-center justify-center gap-2"
-              >
-                {isUploading ? <Loader2 size={18} className="animate-spin" /> : <Plus size={18} />}
-                {isUploading ? 'Uploading...' : 'Add Video to Gallery'}
-              </button>
-            </form>
-          </div>
-        )}
-
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-          {videos.length === 0 ? (
-            <div className="col-span-full text-center py-8 text-gray-400">
-              <Video size={32} className="mx-auto mb-2 opacity-50" />
-              <p>No videos added yet.</p>
-            </div>
-          ) : (
-            videos.map(video => (
-              <div key={video.id} className="relative group rounded-xl overflow-hidden shadow-sm border border-gray-100">
-                <div className="aspect-video bg-gray-900">
-                  {video.type === 'uploaded' ? (
-                    <video src={video.url} className="w-full h-full object-cover" />
-                  ) : (
-                    <img
-                      src={`https://img.youtube.com/vi/${(() => {
-                        const url = video.url;
-                        if (!url) return '';
-                        const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=)([^#&?]*).*/;
-                        const match = url.match(regExp);
-                        return (match && match[2].length === 11) ? match[2] : url.split('/').pop() || '';
-                      })()}/hqdefault.jpg`}
-                      className="w-full h-full object-cover"
-                      alt="Thumbnail"
-                    />
-                  )}
-                  <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
-                    <button
-                      onClick={() => toggleShowcase(video)}
-                      className={`p-2 rounded-full transition-colors ${video.isShowcase ? 'bg-yellow-400 text-white hover:bg-yellow-500' : 'bg-gray-200 text-gray-400 hover:bg-white'}`}
-                      title={video.isShowcase ? "Remove from Showcase" : "Add to Showcase"}
-                    >
-                      <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill={video.isShowcase ? "currentColor" : "none"} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" /></svg>
-                    </button>
-                    <button
-                      onClick={() => handleDeleteVideo(video)}
-                      className="p-2 bg-red-600 text-white rounded-full hover:bg-red-700 transition-colors"
-                      title="Delete Video"
-                    >
-                      <Trash2 size={16} />
-                    </button>
-                  </div>
-                </div>
-                <div className="p-3 bg-white">
-                  <h4 className="font-bold text-dark text-sm truncate" title={video.title}>{video.title}</h4>
-                  <span className="text-xs text-gray-400 uppercase font-medium">{video.type}</span>
-                </div>
-              </div>
-            ))
-          )}
-        </div>
-      </div>
-
-      <div className="bg-white rounded-3xl p-8 shadow-sm mb-6">
+      {/* Database Management Section */}
+      <div className="bg-white rounded-3xl p-5 md:p-8 shadow-sm mb-6">
         <h3 className="text-lg font-bold text-dark mb-4 flex items-center gap-2">
           <Database size={20} /> Database Management
         </h3>
 
-        <div className="space-y-6">
-          {/* RESET DATABASE */}
-          <div className="p-6 bg-red-50 rounded-2xl border border-red-100 flex flex-col md:flex-row md:items-center justify-between gap-4">
-            <div>
-              <h4 className="font-bold text-red-900 mb-1 flex items-center gap-2">
-                <AlertTriangle size={18} /> Danger Zone: Reset Database
-              </h4>
-              <p className="text-sm text-red-700 max-w-md">
-                Clear all application data including sales history, customer records, and inventory.
-              </p>
-            </div>
-            <button
-              onClick={() => setShowWipeConfirm(true)}
-              className="px-6 py-3 bg-white text-red-600 border border-red-200 rounded-xl font-bold hover:bg-red-600 hover:text-white transition-all shadow-sm flex items-center justify-center gap-2 whitespace-nowrap"
-            >
-              <Trash2 size={18} /> Wipe All Data
-            </button>
-          </div>
+        <div className="space-y-3">
+          {(Object.keys(WIPE_CONFIG) as Array<keyof typeof WIPE_CONFIG>).map((key) => {
+            const config = WIPE_CONFIG[key];
+            return (
+              <div key={key} className="p-4 bg-red-50/60 rounded-2xl border border-red-100 flex flex-col md:flex-row md:items-center justify-between gap-3">
+                <div className="flex items-start gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-white flex items-center justify-center flex-shrink-0 shadow-sm">
+                    {config.icon}
+                  </div>
+                  <div>
+                    <h4 className="font-bold text-dark text-sm">{config.title}</h4>
+                    <p className="text-xs text-gray-500">{config.description}</p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setWipeTarget(key)}
+                  className="px-5 py-2.5 bg-white text-red-600 border border-red-200 rounded-xl font-bold text-sm hover:bg-red-600 hover:text-white transition-all shadow-sm flex items-center justify-center gap-2 whitespace-nowrap"
+                >
+                  <Trash2 size={16} /> {config.title}
+                </button>
+              </div>
+            );
+          })}
         </div>
       </div>
 
-      <div className="bg-white rounded-3xl p-8 shadow-sm">
-        <h3 className="text-lg font-bold text-dark mb-4">App Info</h3>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div>
-            <label className="block text-sm font-medium text-gray-500 mb-1">App Name</label>
-            <p className="font-bold text-dark">Instabill</p>
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-500 mb-1">Version</label>
-            <p className="font-bold text-dark">v1.1.0</p>
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-500 mb-1">Status</label>
-            <div className="flex items-center gap-2">
-              <span className="w-2 h-2 rounded-full bg-green-500"></span>
-              <p className="font-bold text-dark">System Active</p>
+      {/* App Info & Logout */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+        <div className="bg-white rounded-3xl p-8 shadow-sm">
+          <h3 className="text-lg font-bold text-dark mb-4">App Info</h3>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-500 mb-1">App Name</label>
+              <p className="font-bold text-dark text-sm">Instabill</p>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-500 mb-1">Version</label>
+              <p className="font-bold text-dark text-sm">v1.1.0</p>
+            </div>
+            <div className="col-span-2">
+              <label className="block text-sm font-medium text-gray-500 mb-1">Status</label>
+              <div className="flex items-center gap-2">
+                <span className="w-2 h-2 rounded-full bg-green-500"></span>
+                <p className="font-bold text-dark text-sm">System Active</p>
+              </div>
             </div>
           </div>
+        </div>
+
+        <div className="bg-white rounded-3xl p-8 shadow-sm flex flex-col justify-center items-center text-center">
+          <div className="w-16 h-16 bg-red-50 rounded-2xl flex items-center justify-center text-red-500 mb-4">
+            <Shield size={32} />
+          </div>
+          <h3 className="text-lg font-bold text-dark mb-2">Account Security</h3>
+          <p className="text-sm text-gray-500 mb-6 flex-1">
+            Sign out of your account to keep your data safe and secure.
+          </p>
+          <button
+            onClick={onLogout}
+            className="w-full py-4 bg-red-50 text-red-600 rounded-2xl font-bold hover:bg-red-100 transition-all flex items-center justify-center gap-2 border border-red-100"
+          >
+            <LogOut size={20} />
+            Logout Account
+          </button>
         </div>
       </div>
     </div>

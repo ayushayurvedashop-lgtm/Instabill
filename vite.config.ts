@@ -27,7 +27,7 @@ export default defineConfig(({ mode }) => {
       basicSsl(),
       VitePWA({
         registerType: 'autoUpdate',
-        includeAssets: ['logo.png'],
+        includeAssets: ['Logo-Icon.png'],
         manifest: {
           name: "Instabill",
           short_name: "Instabill",
@@ -38,12 +38,12 @@ export default defineConfig(({ mode }) => {
           orientation: "portrait-primary",
           icons: [
             {
-              src: "/logo.png",
+              src: "/Logo-Icon.png",
               sizes: "192x192",
               type: "image/png"
             },
             {
-              src: "/logo.png",
+              src: "/Logo-Icon.png",
               sizes: "512x512",
               type: "image/png"
             }

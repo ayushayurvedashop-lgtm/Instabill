@@ -48,7 +48,8 @@ export const sendBillWhatsapp = async (bill: Bill, customerPhone: string, pdfUrl
             billUrl: pdfUrl,
             totalAmount: bill.totalAmount,
             totalSp: bill.totalSp,
-            isUpdate
+            isUpdate,
+            shopName: settings.shopName
         });
 
         const result = response.data as any;
@@ -109,7 +110,8 @@ export const sendProductUpdateWhatsapp = async (
             destination: formattedPhone,
             billReference,
             productsGiven,
-            billUrl
+            billUrl,
+            shopName: settings.shopName
         });
 
         const result = response.data as any;
@@ -189,6 +191,8 @@ export const sendBillSMS = async (bill: Bill, customerPhone: string, pdfUrl?: st
         return false;
     }
 
+    const settings = store.getSettings();
+
     // Ensure phone number has country code
     let formattedPhone = customerPhone.replace(/\s+/g, '');
     if (formattedPhone.length === 10) {
@@ -205,7 +209,7 @@ export const sendBillSMS = async (bill: Bill, customerPhone: string, pdfUrl?: st
 
     if (isUpdate) {
         // Bill Updated message
-        message = `Ayush Ayurveda
+        message = `${settings.shopName}
 Bill ${bill.id} Updated ✓
 
 Amount: Rs.${bill.totalAmount}
@@ -215,7 +219,7 @@ View Bill:
 ${invoiceLink}`;
     } else {
         // Bill Generated message
-        message = `Ayush Ayurveda
+        message = `${settings.shopName}
 Bill ${bill.id} Generated ✓
 
 Amount: Rs.${bill.totalAmount}

@@ -18,6 +18,7 @@ export interface WhyChooseFeature {
     title: string;
     description: string;
     iconType: string;
+    imageUrl?: string;
 }
 
 export interface LandingPageConfig {
@@ -32,6 +33,8 @@ export interface LandingPageConfig {
     whyChooseFeatures: WhyChooseFeature[];
     ctaTitle: string;
     ctaDescription: string;
+    supportPhone?: string;
+    supportEmail?: string;
 }
 
 const DEFAULT_CONFIG: LandingPageConfig = {
@@ -48,18 +51,21 @@ const DEFAULT_CONFIG: LandingPageConfig = {
     whyChooseDescription: "We understand that running an Ayurveda clinic is different from a regular retail store. Our platform brings harmony to your business operations.",
     whyChooseVideoUrl: "",
     whyChooseFeatures: [
-        { id: '1', title: 'Ayurveda Specific Workflows', description: 'Custom fields for Prakriti analysis, Nadi Pariksha records, and herbal treatment plans integrated directly into billing.', iconType: 'flower' },
-        { id: '2', title: 'Reliable & Secure', description: 'Data security you can trust with 99.9% uptime. Your patient data is encrypted and backed up automatically.', iconType: 'shield' },
-        { id: '3', title: 'Nature Inspired Interface', description: 'A calming, clean interface that reduces eye strain and matches the ethos of your holistic practice.', iconType: 'leaf' }
+        { id: '1', title: 'Ayurveda Specific Workflows', description: 'Custom fields for Prakriti analysis, Nadi Pariksha records, and herbal treatment plans integrated directly into billing.', iconType: 'flower', imageUrl: 'https://images.unsplash.com/photo-1540420773420-3366772f4999?auto=format&fit=crop&q=80' },
+        { id: '2', title: 'Reliable & Secure', description: 'Data security you can trust with 99.9% uptime. Your patient data is encrypted and backed up automatically.', iconType: 'shield', imageUrl: 'https://images.unsplash.com/photo-1551288049-bebda4e38f71?auto=format&fit=crop&q=80' },
+        { id: '3', title: 'Nature Inspired Interface', description: 'A calming, clean interface that reduces eye strain and matches the ethos of your holistic practice.', iconType: 'leaf', imageUrl: 'https://images.unsplash.com/photo-1517420704952-d9f39e95b43e?auto=format&fit=crop&q=80' }
     ],
     ctaTitle: "Ready to modernize your Ayurveda clinic?",
-    ctaDescription: "Join hundreds of successful franchises using Instabill to streamline their billing and inventory."
+    ctaDescription: "Join hundreds of successful franchises using Instabill to streamline their billing and inventory.",
+    supportPhone: "+91 98765 43210",
+    supportEmail: "support@instabill.com"
 };
 
 const AdminLandingPageManager: React.FC = () => {
     const [config, setConfig] = useState<LandingPageConfig>(DEFAULT_CONFIG);
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
+    const [uploadingFeatureId, setUploadingFeatureId] = useState<string | null>(null);
     const [message, setMessage] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
 
     useEffect(() => {
@@ -108,8 +114,31 @@ const AdminLandingPageManager: React.FC = () => {
     const addWhyChooseFeature = () => {
         setConfig(prev => ({
             ...prev,
-            whyChooseFeatures: [...prev.whyChooseFeatures, { id: uuidv4(), title: "New Reason", description: "Desc", iconType: "check" }]
+            whyChooseFeatures: [...prev.whyChooseFeatures, { id: uuidv4(), title: "New Reason", description: "Desc", iconType: "check", imageUrl: "" }]
         }));
+    };
+
+    const handleFeatureImageUpload = async (featureId: string, file: File) => {
+        try {
+            setUploadingFeatureId(featureId);
+            const fileRef = ref(storage, `landing_page/features/${featureId}_${file.name}`);
+            await uploadBytes(fileRef, file);
+            const url = await getDownloadURL(fileRef);
+
+            setConfig(prev => ({
+                ...prev,
+                whyChooseFeatures: prev.whyChooseFeatures.map(f =>
+                    f.id === featureId ? { ...f, imageUrl: url } : f
+                )
+            }));
+            setMessage({ text: 'Image uploaded successfully!', type: 'success' });
+        } catch (error) {
+            console.error("Error uploading feature image:", error);
+            setMessage({ text: 'Failed to upload image.', type: 'error' });
+        } finally {
+            setUploadingFeatureId(null);
+            setTimeout(() => setMessage(null), 3000);
+        }
     };
 
     if (loading) return <div className="flex justify-center items-center h-64"><Loader2 size={32} className="animate-spin text-[#21776a]" /></div>;
@@ -192,6 +221,37 @@ const AdminLandingPageManager: React.FC = () => {
                                             <div className="flex-[2]"><InputGroup label="Title" value={f.title} onChange={(v) => setConfig(prev => ({ ...prev, whyChooseFeatures: prev.whyChooseFeatures.map(x => x.id === f.id ? { ...x, title: v } : x) }))} /></div>
                                             <div className="flex-1"><InputGroup label="Icon Name (lucide)" value={f.iconType} onChange={(v) => setConfig(prev => ({ ...prev, whyChooseFeatures: prev.whyChooseFeatures.map(x => x.id === f.id ? { ...x, iconType: v } : x) }))} /></div>
                                         </div>
+
+                                        <div>
+                                            <label className="block text-xs font-semibold text-gray-500 mb-1.5 uppercase tracking-wider">Feature Image (Transparent PNG)</label>
+                                            <div className="flex items-center gap-4">
+                                                {f.imageUrl && (
+                                                    <div className="w-16 h-16 rounded bg-gray-100 border border-gray-200 overflow-hidden flex items-center justify-center shrink-0">
+                                                        <img src={f.imageUrl} alt="Preview" className="w-12 h-12 object-contain" />
+                                                    </div>
+                                                )}
+                                                <div className="flex-1 relative">
+                                                    <input
+                                                        type="file"
+                                                        accept="image/*"
+                                                        onChange={(e) => {
+                                                            const file = e.target.files?.[0];
+                                                            if (file) handleFeatureImageUpload(f.id, file);
+                                                        }}
+                                                        className="absolute inset-0 w-full h-full opacity-0 cursor-pointer disabled:cursor-not-allowed"
+                                                        disabled={uploadingFeatureId === f.id}
+                                                    />
+                                                    <div className={`w-full border-2 border-dashed rounded-xl px-4 py-3 flex items-center justify-center gap-2 ${uploadingFeatureId === f.id ? 'border-gray-200 bg-gray-50 text-gray-400' : 'border-[#21776a]/30 bg-[#daf4d7]/20 text-[#21776a] hover:bg-[#daf4d7]/40'} transition-colors`}>
+                                                        {uploadingFeatureId === f.id ? (
+                                                            <><Loader2 size={18} className="animate-spin" /> Uploading...</>
+                                                        ) : (
+                                                            <><ImageIcon size={18} /> {f.imageUrl ? 'Change Image' : 'Upload Image'}</>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+
                                         <InputGroup label="Description" value={f.description} onChange={(v) => setConfig(prev => ({ ...prev, whyChooseFeatures: prev.whyChooseFeatures.map(x => x.id === f.id ? { ...x, description: v } : x) }))} isTextArea />
                                     </div>
                                     <button onClick={() => setConfig(prev => ({ ...prev, whyChooseFeatures: prev.whyChooseFeatures.filter(x => x.id !== f.id) }))} className="text-red-500 hover:bg-red-50 p-2 rounded h-fit"><Trash2 size={18} /></button>
@@ -202,12 +262,20 @@ const AdminLandingPageManager: React.FC = () => {
                 </div>
             </div>
 
-            {/* CTA Section */}
+            {/* CTA Section and Support */}
             <div className="admin-card rounded-2xl border border-gray-100 shadow-sm overflow-hidden bg-white">
-                <div className="admin-card__header bg-gray-50 border-b border-gray-100 px-6 py-4"><h2 className="text-lg font-bold text-[#111617]">Bottom CTA Section</h2></div>
+                <div className="admin-card__header bg-gray-50 border-b border-gray-100 px-6 py-4"><h2 className="text-lg font-bold text-[#111617]">Bottom CTA & Support Section</h2></div>
                 <div className="admin-card__body p-6 space-y-5">
                     <InputGroup label="CTA Title" value={config.ctaTitle} onChange={(v) => setConfig({ ...config, ctaTitle: v })} />
                     <InputGroup label="CTA Description" value={config.ctaDescription} onChange={(v) => setConfig({ ...config, ctaDescription: v })} isTextArea />
+
+                    <div className="border-t border-gray-100 pt-5 mt-5 space-y-5">
+                        <h3 className="font-bold text-[#111617] mb-2">Support Contact Info</h3>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                            <InputGroup label="Support Phone Number" value={config.supportPhone || ''} onChange={(v) => setConfig({ ...config, supportPhone: v })} />
+                            <InputGroup label="Support Email Address" value={config.supportEmail || ''} onChange={(v) => setConfig({ ...config, supportEmail: v })} />
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>

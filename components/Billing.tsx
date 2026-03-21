@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { createPortal } from 'react-dom';
-import { X, Search, Check, AlertCircle, ShoppingCart, Receipt, UserPlus, User, Phone, Plus, Camera, Image as ImageIcon, ChevronDown, ChevronUp, Trash2, Mic, Edit2, Package, ArrowRight, CheckCircle, MessageSquare } from 'lucide-react';
+import { X, Search, Check, AlertCircle, ShoppingCart, Receipt, UserPlus, User, Phone, Plus, Camera, Image as ImageIcon, ChevronDown, ChevronUp, Trash2, Mic, Edit2, Package, ArrowRight, CheckCircle, MessageSquare, Menu, ChevronLeft } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Tab, Bill, BillItem, ProductStatus, PaymentMethod, BillingType, Product } from '../types';
 import { EMPTY_BILL } from '../constants';
@@ -11,6 +11,7 @@ import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { sendBillSMS, sendBillWhatsapp } from '../services/smsService';
 import { generateAndUploadInvoicePDF } from '../services/pdfService';
 import { processVoiceInput } from '../services/voiceParsingService';
+import { useBackButton } from '../hooks/useBackButton';
 
 import { InvoiceModal } from './InvoiceModal';
 import { ProductQuickSearch } from './ProductQuickSearch';
@@ -145,6 +146,22 @@ const Billing: React.FC<BillingProps> = ({ tabs, setTabs, activeTabId, setActive
 
   // Mobile Customer Search UI State
   const [isMobileCustomerSearchOpen, setIsMobileCustomerSearchOpen] = useState(false);
+
+  // Mobile Tab Switcher State
+  const [isMobileTabSwitcherOpen, setIsMobileTabSwitcherOpen] = useState(false);
+
+  // Mobile Payment Page State (replaces bottom drawer)
+  const [isMobilePaymentPageOpen, setIsMobilePaymentPageOpen] = useState(false);
+  const [showMobileDeleteConfirm, setShowMobileDeleteConfirm] = useState(false);
+
+  // Back button handlers for modals/panels
+  useBackButton(isAddProductOpen, () => setIsAddProductOpen(false));
+  useBackButton(showPaymentModal, () => setShowPaymentModal(false));
+  useBackButton(showInvoiceModal, () => setShowInvoiceModal(false));
+  useBackButton(isAddCustomerOpen, () => setIsAddCustomerOpen(false));
+  useBackButton(isQuickSearchOpen, () => setIsQuickSearchOpen(false));
+  useBackButton(isMobileTabSwitcherOpen, () => setIsMobileTabSwitcherOpen(false));
+  useBackButton(isMobilePaymentPageOpen, () => setIsMobilePaymentPageOpen(false));
 
   const handleCategoryScrollProgress = useCallback(() => {
     if (!categoryScrollRef.current) return;
@@ -461,10 +478,12 @@ const Billing: React.FC<BillingProps> = ({ tabs, setTabs, activeTabId, setActive
     let newItems = [...activeBill.items];
     const price = activeBill.billingType === 'DP' ? product.dp : product.mrp;
 
+    const refId = window.innerWidth >= 1024 ? `desktop-${productId}` : `mobile-${productId}`;
+
     if (existingItemIndex > -1) {
       newItems[existingItemIndex].quantity += 1;
       newItems[existingItemIndex].totalSp = parseFloat((newItems[existingItemIndex].quantity * product.sp).toFixed(2));
-      setFocusedQtyId(productId);
+      setFocusedQtyId(refId);
     } else {
       newItems.push({
         ...product,
@@ -476,7 +495,7 @@ const Billing: React.FC<BillingProps> = ({ tabs, setTabs, activeTabId, setActive
       });
       // Trigger enter animation for new item
       setJustAddedId(productId);
-      setFocusedQtyId(productId); // Focus the quantity input for the newly added item
+      setFocusedQtyId(refId); // Focus the quantity input for the newly added item
       setTimeout(() => setJustAddedId(null), 300);
     }
     recalculateTotals(newItems);
@@ -786,6 +805,11 @@ const Billing: React.FC<BillingProps> = ({ tabs, setTabs, activeTabId, setActive
 
   const handleCancelCurrentBill = () => {
     if (window.confirm('Are you sure you want to revert all changes and start a new bill from scratch?')) {
+      performCancelCurrentBill();
+    }
+  };
+
+  const performCancelCurrentBill = () => {
       const maxId = tabs.reduce((max, t) => {
         if (/^\d+$/.test(t.id)) {
           const num = parseInt(t.id);
@@ -823,7 +847,6 @@ const Billing: React.FC<BillingProps> = ({ tabs, setTabs, activeTabId, setActive
       setTabs(prev => prev.map(t => t.id === activeTabId ? newTab : t));
       setActiveTabId(newId);
       setIsMobilePaymentDrawerOpen(false);
-    }
   };
 
   const handleAddCustomer = async () => {
@@ -1522,6 +1545,7 @@ const Billing: React.FC<BillingProps> = ({ tabs, setTabs, activeTabId, setActive
             setSearchTerm(e.target.value);
             setHighlightedProductIndex(-1);
           }}
+          onFocus={(e) => e.target.select()}
           onKeyDown={(e) => {
             const productsCount = filteredProducts.length;
             if (e.key === 'ArrowDown') {
@@ -1648,7 +1672,7 @@ const Billing: React.FC<BillingProps> = ({ tabs, setTabs, activeTabId, setActive
                         </button>
                         <input
                           ref={el => {
-                            if (el) productQtyRefs.current[product.id] = el;
+                            if (el) productQtyRefs.current[`mobile-${product.id}`] = el;
                           }}
                           type="text"
                           inputMode="numeric"
@@ -1777,7 +1801,7 @@ const Billing: React.FC<BillingProps> = ({ tabs, setTabs, activeTabId, setActive
                         </button>
                         <input
                           ref={el => {
-                            if (el) productQtyRefs.current[product.id] = el;
+                            if (el) productQtyRefs.current[`desktop-${product.id}`] = el;
                           }}
                           type="text"
                           inputMode="numeric"
@@ -2124,8 +2148,8 @@ const Billing: React.FC<BillingProps> = ({ tabs, setTabs, activeTabId, setActive
 
       {/* Main Content Wrapper */}
       <div className="flex flex-col h-full gap-[6px]">
-        {/* Tab Navigation */}
-        <div className="mx-5 flex items-center gap-2.5 overflow-x-auto px-1 pb-1 no-scrollbar shrink-0">
+        {/* Tab Navigation - Hidden on Mobile, visible on Desktop */}
+        <div className="hidden md:flex mx-5 items-center gap-2.5 overflow-x-auto px-1 pb-1 no-scrollbar shrink-0">
           {tabs.map((tab) => {
             const isActive = activeTabId === tab.id;
             return (
@@ -2182,12 +2206,59 @@ const Billing: React.FC<BillingProps> = ({ tabs, setTabs, activeTabId, setActive
           {/* Right Side Panel - Bill Items & Controls (Mobile Only - Hidden on Desktop) */}
           <div className="flex lg:hidden flex-1 flex-col gap-2.5 md:gap-6 h-full min-w-0 animate-slide-up opacity-0 [animation-delay:100ms]">
 
+            {/* DP/MRP Toggle - Mobile - Centered above search */}
+            <div className="md:hidden flex justify-center">
+              <div className="relative h-[34px] bg-white rounded-full flex items-center p-[2.5px] w-[220px] shadow-sm border border-gray-100/50">
+                {/* Active indicator */}
+                <div
+                  className={`absolute top-[2.5px] bottom-[2.5px] w-[107.5px] rounded-full transition-all duration-300 ease-out ${activeBill.billingType === 'DP' ? 'bg-[#02575C]' : 'bg-[#EF4444]'}`}
+                  style={{ left: activeBill.billingType === 'DP' ? '2.5px' : 'calc(100% - 110px)' }}
+                />
+                <button
+                  onClick={() => handlePricingModeChange('DP')}
+                  className={`relative z-10 flex-1 h-full flex items-center justify-center text-[13px] font-medium transition-all tracking-wide leading-none ${activeBill.billingType === 'DP' ? 'text-white' : 'text-[#797979]'}`}
+                >
+                  DP Mode
+                </button>
+                <button
+                  onClick={() => handlePricingModeChange('MRP')}
+                  className={`relative z-10 flex-1 h-full flex items-center justify-center text-[13px] font-medium transition-all tracking-wide leading-none ${activeBill.billingType === 'MRP' ? 'text-white' : 'text-[#797979]'}`}
+                >
+                  MRP Mode
+                </button>
+              </div>
+            </div>
 
+            {/* Mobile Header: Customer Search + Hamburger */}
+            <div className="mx-3 md:hidden flex items-center gap-2.5" ref={searchWrapperRef}>
+              {/* Customer Search Trigger - White Pill */}
+              <div
+                className="flex-1 min-w-0 bg-white rounded-[15px] h-[48px] flex items-center cursor-pointer active:opacity-70 transition-opacity px-5 gap-3 shadow-sm border border-gray-50/50"
+                onClick={() => setIsMobileCustomerSearchOpen(true)}
+              >
+                <Search size={18} strokeWidth={2} className="text-[#8391A1] shrink-0" />
+                <div className="text-[15px] font-medium text-[#5D858F] truncate select-none">
+                  {activeBill.customerName || "Search Customer"}
+                </div>
+              </div>
 
+              {/* Hamburger Tab Switcher Button */}
+              <button
+                onClick={() => setIsMobileTabSwitcherOpen(true)}
+                className="relative w-[48px] h-[48px] bg-white rounded-[15px] flex items-center justify-center shrink-0 active:scale-95 transition-transform shadow-sm border border-gray-50/50"
+              >
+                <Menu size={22} strokeWidth={2} className="text-[#3A4A5A]" />
+                {/* Badge showing tab count */}
+                {tabs.length > 1 && (
+                  <div className="absolute -top-1 -right-1 w-[20px] h-[20px] bg-[#02575C] rounded-full flex items-center justify-center border-[2.5px] border-[#F3F5F2]">
+                    <span className="text-white text-[10px] font-bold leading-none">{tabs.length}</span>
+                  </div>
+                )}
+              </button>
+            </div>
 
-            {/* Customer Search - Mobile Only - Separate Card */}
-            <div className="mx-4 lg:hidden bg-white rounded-full shadow-[0_4px_12px_rgba(0,0,0,0.04)] pl-5 pr-2 py-2 flex items-center gap-3 relative" ref={searchWrapperRef}>
-              {/* Mobile Customer Search Trigger */}
+            {/* Desktop-only original search bar + toggle (unchanged) */}
+            <div className="hidden md:flex lg:hidden mx-4 bg-white rounded-full shadow-[0_4px_12px_rgba(0,0,0,0.04)] pl-5 pr-2 py-2 items-center gap-3 relative">
               <div
                 className="flex-1 min-w-0 flex items-center cursor-pointer active:opacity-70 transition-opacity h-[40px]"
                 onClick={() => setIsMobileCustomerSearchOpen(true)}
@@ -2197,8 +2268,6 @@ const Billing: React.FC<BillingProps> = ({ tabs, setTabs, activeTabId, setActive
                   {activeBill.customerName || "Search Customer"}
                 </div>
               </div>
-
-              {/* DP/MRP Toggle - Mobile */}
               <div className="flex bg-[#F5F7F5] rounded-full p-1 shrink-0 relative z-10 transition-all shadow-[inset_0_2px_4px_rgba(0,0,0,0.02)]">
                 <button
                   onClick={() => handlePricingModeChange('DP')}
@@ -2234,13 +2303,12 @@ const Billing: React.FC<BillingProps> = ({ tabs, setTabs, activeTabId, setActive
             {/* Table Area - Transparent Container */}
             <div className={`flex-1 flex flex-col overflow-hidden relative transition-all duration-300`}>
 
-              <div className="flex-1 flex flex-col overflow-hidden pt-0 pb-2 px-4 md:px-0 relative">
+              <div className="flex-1 flex flex-col overflow-hidden pt-0 pb-2 px-3 md:px-0 relative">
 
-                {/* Mobile Column View - Compact & Horizontal */}
-                <div ref={listContainerRef} className="md:hidden bill-items-container bg-white rounded-[20px] shadow-[4px_4px_26.8px_-11px_rgba(33,119,106,0.15)] flex-1 overflow-y-auto mb-[180px] py-1.5 overflow-x-hidden">
+                {/* Mobile Column View - Redesigned per Figma */}
+                <div ref={listContainerRef} className="md:hidden bill-items-container bg-white rounded-[32px] flex-1 overflow-y-auto mb-[170px] py-1 overflow-x-hidden">
                   <AnimatePresence>
                     {activeBill.items.map((item, index) => {
-                      // Logic to determine pending status
                       const pendingQty = item.pendingQuantity || 0;
                       const isPending = pendingQty > 0;
 
@@ -2265,7 +2333,6 @@ const Billing: React.FC<BillingProps> = ({ tabs, setTabs, activeTabId, setActive
                             whileDrag={{ zIndex: 10, scale: 1.02 }}
                             onDragEnd={(e, { offset, velocity }) => {
                               if (offset.x > 80 || velocity.x > 400) {
-                                // Immediate remove for framer-motion exit animation
                                 const newItems = activeBill.items.filter(i => i.id !== item.id);
                                 recalculateTotals(newItems);
                               }
@@ -2277,34 +2344,36 @@ const Billing: React.FC<BillingProps> = ({ tabs, setTabs, activeTabId, setActive
                               ${justAddedId === item.id ? 'bill-item-enter bubble-pulse' : ''}
                             `}
                           >
-                            {/* Divider */}
+                            {/* Divider - offset from left */}
                             {index > 0 && (
-                              <div className="mx-3.5 h-[1px] bg-[#F0F0F0]" />
+                              <div className="ml-[64px] mr-[16px] h-[1px] bg-[#EFEFEF]" />
                             )}
-                            <div className="px-3.5 py-2.5 flex items-center gap-2.5 relative">
-                              {/* Left: Green Checkbox */}
+                            <div className="px-4 py-2.5 flex items-center gap-3 relative">
+                              {/* Left: Rounded Status Circle - 40x40 */}
                               <div
-                                className={`shrink-0 w-[34px] h-[34px] rounded-[8px] flex items-center justify-center cursor-pointer active:scale-95 transition-transform ${isPending ? 'bg-red-100' : 'bg-[#88DE7D]'}`}
+                                className={`shrink-0 w-[40px] h-[40px] rounded-full flex items-center justify-center cursor-pointer active:scale-95 transition-transform ${isPending ? 'bg-[#FFC7C7]' : 'bg-[#E4F595]'}`}
                                 onClick={() => setStatusDrawerItemId(item.id)}
                               >
                                 {isPending ? (
-                                  <span className="text-red-600 font-bold text-[10px]">{pendingQty}P</span>
+                                  <span className="text-[#F22] font-bold text-[14px] leading-none">{pendingQty}P</span>
                                 ) : (
-                                  <Check size={16} className="text-[#111617] stroke-[3]" />
+                                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#02575C" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                                    <polyline points="20 6 9 17 4 12"></polyline>
+                                  </svg>
                                 )}
                               </div>
 
                               {/* Center: Product Details */}
                               <div className="flex-1 min-w-0 flex flex-col justify-center gap-1">
-                                <h4 className="font-bold text-[#111617] text-[13px] leading-tight truncate uppercase pr-1">{item.name}</h4>
-                                <div className="flex items-center gap-1.5">
+                                <h4 className="font-semibold text-[#111617] text-[13px] leading-tight truncate">{item.name}</h4>
+                                <div className="flex items-center gap-2">
                                   {/* SP Pill */}
-                                  <div className="bg-[#21776A] px-2 py-[2px] rounded flex items-center justify-center shrink-0">
-                                    <span className="text-[9px] font-bold text-[#ffffff] whitespace-nowrap">SP {item.sp}</span>
+                                  <div className={`w-[64px] py-[2px] rounded-full flex items-center justify-center shrink-0 ${isPending ? 'bg-[#FFE7E7]' : 'bg-[#E7FAFF]'}`}>
+                                    <span className={`text-[10px] font-medium whitespace-nowrap ${isPending ? 'text-[#353535]' : 'text-[#21776A]'}`}>SP {item.sp}</span>
                                   </div>
                                   {/* DP/MRP Pill */}
-                                  <div className="bg-[#DAF4D7] px-2 py-[2px] rounded flex items-center justify-center shrink-0">
-                                    <span className="text-[9px] font-bold text-[#21776A] whitespace-nowrap">
+                                  <div className="bg-[#F0F0F0] w-[64px] py-[2px] rounded-full flex items-center justify-center shrink-0">
+                                    <span className="text-[10px] font-medium text-[#111617] whitespace-nowrap">
                                       {activeBill.billingType === 'MRP' ? 'MRP ' : 'DP '}
                                       {activeBill.billingType === 'MRP' ? item.mrp : item.dp}
                                     </span>
@@ -2313,12 +2382,12 @@ const Billing: React.FC<BillingProps> = ({ tabs, setTabs, activeTabId, setActive
                               </div>
 
                               {/* Right: Quantity & Price */}
-                              <div className="flex items-center gap-2.5 shrink-0">
-                                {/* Quantity Stepper */}
-                                <div className="flex items-center bg-[#F2F7F2] rounded-[8px] h-[30px] w-[68px]">
+                              <div className="flex items-center gap-3 shrink-0">
+                                {/* Quantity Stepper - 72x32 */}
+                                <div className="flex items-center bg-[#F0F0F0] rounded-[10px] h-[32px] w-[72px]">
                                   <button
                                     onClick={() => handleUpdateQuantity(item.id, -1)}
-                                    className="flex-1 h-full flex items-center justify-center text-[#111617] active:bg-black/5 transition-colors text-[16px] font-bold leading-none"
+                                    className="flex-1 h-full flex items-center justify-center text-[#111617] active:bg-black/5 transition-colors text-[18px] font-medium leading-none"
                                   >
                                     −
                                   </button>
@@ -2335,19 +2404,19 @@ const Billing: React.FC<BillingProps> = ({ tabs, setTabs, activeTabId, setActive
                                         handleSetQuantity(item.id, numVal);
                                       }
                                     }}
-                                    className="w-[28px] text-center font-bold text-[#111617] text-[13px] leading-none bg-transparent focus:outline-none focus:bg-white rounded-sm p-0 mx-0.5"
+                                    className="w-[18px] text-center font-medium text-[#111617] text-[14px] leading-none bg-transparent focus:outline-none focus:bg-white rounded-sm p-0"
                                   />
                                   <button
                                     onClick={() => handleUpdateQuantity(item.id, 1)}
-                                    className="flex-1 h-full flex items-center justify-center text-[#111617] active:bg-black/5 transition-colors text-[16px] font-bold leading-none"
+                                    className="flex-1 h-full flex items-center justify-center text-[#111617] active:bg-black/5 transition-colors text-[18px] font-medium leading-none"
                                   >
                                     +
                                   </button>
                                 </div>
 
                                 {/* Total Price */}
-                                <div className="text-right min-w-[3rem]">
-                                  <span className="font-bold text-[#111617] text-[14px]">
+                                <div className="text-right min-w-[3.2rem]">
+                                  <span className="font-bold text-[#111617] text-[15px]">
                                     ₹{item.currentPrice * item.quantity}
                                   </span>
                                 </div>
@@ -2359,13 +2428,13 @@ const Billing: React.FC<BillingProps> = ({ tabs, setTabs, activeTabId, setActive
                     })}
                   </AnimatePresence>
 
-                  {/* Add Product Button - Mobile */}
+                  {/* Add Product Button - Figma style dashed */}
                   <div className="px-5 py-4 pb-6">
                     <button
                       onClick={() => setIsAddProductOpen(true)}
-                      className="w-full py-3.5 border-[2px] border-dashed border-[#DBDBDB] rounded-[16px] text-[#111617] hover:border-[#88DE7D] hover:bg-[#DAF4D7]/30 transition-all flex items-center justify-center gap-2 font-bold text-[13px] uppercase tracking-wider"
+                      className="w-full py-3 border-[0.5px] border-dashed border-[#767676] rounded-[20px] text-black hover:border-[#02575C] hover:bg-[#E4F595]/20 transition-all flex items-center justify-center gap-1.5 font-medium text-[15px]"
                     >
-                      <Plus size={18} strokeWidth={2.5} /> ADD ITEM
+                      + Add Item
                     </button>
                   </div>
                 </div>
@@ -2648,358 +2717,505 @@ const Billing: React.FC<BillingProps> = ({ tabs, setTabs, activeTabId, setActive
               </div>
             </div>
 
-            {/* Backdrop for Mobile Drawer */}
-            {isMobilePaymentDrawerOpen && (
-              <div
-                className="md:hidden fixed inset-0 z-[59] bg-black/[0.01]"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setIsMobilePaymentDrawerOpen(false);
-                }}
-              />
+            {/* ===== NEW: Redesigned Bottom Bar (Mobile Only) ===== */}
+            {createPortal(
+              <div className={`md:hidden fixed bottom-3 left-3 right-3 z-[60] pointer-events-none ${showInvoiceModal ? 'hidden' : ''}`}>
+                <div className="bg-white rounded-[24px] pointer-events-auto px-5 py-5 shadow-[0_4px_32px_rgba(0,0,0,0.1)]">
+                  {/* Stats Row */}
+                  <div className="flex items-center justify-between mb-5">
+                    {/* TOTAL ITEMS */}
+                    <div className="flex-1 flex flex-col items-center">
+                      <span className="text-[11px] font-medium text-[#797979] uppercase tracking-wide mb-1.5">Total Items</span>
+                      <span className="text-[24px] font-bold text-[#02575C] leading-none">
+                        {activeBill.items.reduce((sum, i) => sum + i.quantity, 0)}
+                      </span>
+                    </div>
+                    {/* Divider */}
+                    <div className="w-[1px] h-[36px] bg-[#EFEFEF]" />
+                    {/* TOTAL SP */}
+                    <div className="flex-1 flex flex-col items-center">
+                      <span className="text-[11px] font-medium text-[#797979] uppercase tracking-wide mb-1.5">Total SP</span>
+                      <span className="text-[24px] font-bold text-[#02575C] leading-none">
+                        {activeBill.totalSp}
+                      </span>
+                    </div>
+                    {/* Divider */}
+                    <div className="w-[1px] h-[36px] bg-[#EFEFEF]" />
+                    {/* NET AMOUNT */}
+                    <div className="flex-[1.2] flex flex-col items-center">
+                      <span className="text-[11px] font-medium text-[#797979] uppercase tracking-wide mb-1.5">Net Amount</span>
+                      <span className="text-[24px] font-bold text-[#02575C] leading-none tracking-[-0.5px]">
+                        ₹{activeBill.totalAmount.toLocaleString()}
+                      </span>
+                    </div>
+                  </div>
+                  {/* Action Row: Delete + Continue */}
+                  <div className="flex items-center gap-3">
+                    {/* Delete Button */}
+                    <button
+                      onClick={() => setShowMobileDeleteConfirm(true)}
+                      className="w-[52px] h-[52px] shrink-0 bg-[#FDEAEA] hover:bg-[#FACACA] active:scale-95 transition-all rounded-[16px] flex items-center justify-center"
+                      title="Delete Bill"
+                    >
+                      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#EF4444" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <polyline points="3 6 5 6 21 6"></polyline>
+                        <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                        <line x1="10" y1="11" x2="10" y2="17"></line>
+                        <line x1="14" y1="11" x2="14" y2="17"></line>
+                      </svg>
+                    </button>
+                    {/* Continue Button */}
+                    <button
+                      onClick={() => setIsMobilePaymentPageOpen(true)}
+                      className="flex-1 h-[52px] bg-[#02575C] hover:bg-[#024a4e] active:scale-[0.98] transition-all rounded-[16px] flex items-center justify-center gap-2 text-white font-medium text-[16px]"
+                    >
+                      Continue
+                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>
+                    </button>
+                  </div>
+                </div>
+              </div>,
+              document.body
             )}
 
-            {/* Backdrop overlay when drawer is expanded */}
+            {/* ===== Delete Confirmation Modal (Mobile) ===== */}
             {createPortal(
               <AnimatePresence>
-                {isMobilePaymentDrawerOpen && !showInvoiceModal && (
+                {showMobileDeleteConfirm && (
                   <motion.div
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
                     exit={{ opacity: 0 }}
-                    transition={{ duration: 0.25, ease: [0.4, 0, 0.2, 1] }}
-                    className="md:hidden fixed inset-0 z-[55] bg-black/40 backdrop-blur-[6px]"
-                    onClick={() => setIsMobilePaymentDrawerOpen(false)}
-                  />
+                    className="md:hidden fixed inset-0 z-[100] flex items-center justify-center bg-black/40 backdrop-blur-sm"
+                    onClick={() => setShowMobileDeleteConfirm(false)}
+                  >
+                    <motion.div
+                      initial={{ opacity: 0, scale: 0.9, y: 20 }}
+                      animate={{ opacity: 1, scale: 1, y: 0 }}
+                      exit={{ opacity: 0, scale: 0.9, y: 20 }}
+                      transition={{ type: 'spring', damping: 25, stiffness: 300 }}
+                      className="bg-white rounded-[24px] p-6 mx-6 w-full max-w-[320px] shadow-2xl"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      {/* Warning Icon */}
+                      <div className="w-[56px] h-[56px] bg-[#FDEAEA] rounded-full flex items-center justify-center mx-auto mb-4">
+                        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#EF4444" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <polyline points="3 6 5 6 21 6"></polyline>
+                          <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                        </svg>
+                      </div>
+                      <h3 className="text-[18px] font-bold text-[#111617] text-center mb-2">Delete this bill?</h3>
+                      <p className="text-[14px] text-[#797979] text-center mb-6 leading-relaxed">
+                        This will clear all items and start a fresh bill. This action cannot be undone.
+                      </p>
+                      <div className="flex gap-3">
+                        <button
+                          onClick={() => setShowMobileDeleteConfirm(false)}
+                          className="flex-1 h-[46px] bg-[#F5F5F5] hover:bg-[#EBEBEB] active:scale-[0.97] transition-all rounded-[14px] text-[#333] font-medium text-[15px]"
+                        >
+                          Keep
+                        </button>
+                        <button
+                          onClick={() => {
+                            setShowMobileDeleteConfirm(false);
+                            performCancelCurrentBill();
+                          }}
+                          className="flex-1 h-[46px] bg-[#EF4444] hover:bg-[#DC2626] active:scale-[0.97] transition-all rounded-[14px] text-white font-medium text-[15px]"
+                        >
+                          Delete
+                        </button>
+                      </div>
+                    </motion.div>
+                  </motion.div>
                 )}
               </AnimatePresence>,
               document.body
             )}
 
-            {/* Mobile Bottom Payment Drawer Container */}
+            {/* ===== NEW: Mobile Tab Switcher Overlay ===== */}
             {createPortal(
-              <div className={`md:hidden fixed bottom-4 left-4 right-4 z-[60] flex flex-col justify-end pointer-events-none ${showInvoiceModal ? 'hidden' : ''}`}>
-                <motion.div
-                  initial={false}
-                  animate={{ height: 'auto' }}
-                  className="bg-white rounded-[20px] shadow-[0px_-2px_30px_-8px_rgba(33,119,106,0.2)] flex flex-col overflow-hidden pointer-events-auto transition-all duration-300 relative"
-                >
-                  {/* Drag handle */}
-                  <div className="flex justify-center pt-2.5 pb-1">
-                    <div className="w-10 h-1 rounded-full bg-[#111617]/10" />
-                  </div>
-
-                  {/* Collapsed Header Content */}
-                  <div className="shrink-0 flex flex-col">
-                    {/* Stats Row */}
-                    <div className={`flex gap-3 px-4 transition-all duration-300 ${isMobilePaymentDrawerOpen ? 'mb-3' : 'mb-3'}`}>
-                      {/* Net Amount Box */}
-                      <div className="flex-1 bg-[#F3F5F2] rounded-[12px] py-3.5 px-2 flex flex-col items-center justify-center gap-0.5">
-                        <span className="text-[10px] font-bold text-[#111617]/40 uppercase tracking-widest">Net Amount</span>
-                        <span className="text-[24px] leading-none font-black text-[#111617] tracking-tight text-center">
-                          <span className="text-[15px] mr-0.5">₹</span>{activeBill.totalAmount.toLocaleString()}
-                        </span>
+              <AnimatePresence>
+                {isMobileTabSwitcherOpen && (
+                  <>
+                    {/* Backdrop */}
+                    <motion.div
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      exit={{ opacity: 0 }}
+                      transition={{ duration: 0.2 }}
+                      onClick={() => setIsMobileTabSwitcherOpen(false)}
+                      className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[100] md:hidden"
+                    />
+                    {/* Panel */}
+                    <motion.div
+                      initial={{ opacity: 0, y: 40 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: 40 }}
+                      transition={{ duration: 0.25, ease: [0.4, 0, 0.2, 1] }}
+                      className="fixed bottom-0 left-0 right-0 z-[101] md:hidden bg-[#F3F5F2] rounded-t-[28px] max-h-[80vh] flex flex-col overflow-hidden"
+                    >
+                      {/* Handle */}
+                      <div className="flex justify-center pt-3 pb-2">
+                        <div className="w-10 h-1 bg-black/10 rounded-full" />
+                      </div>
+                      <div className="px-5 pb-2 flex items-center justify-between">
+                        <h3 className="text-[18px] font-bold text-[#111617]">Open Bills</h3>
+                        <button
+                          onClick={() => setIsMobileTabSwitcherOpen(false)}
+                          className="p-2 text-[#111617]/40 hover:text-[#111617]/60 rounded-full hover:bg-white transition-colors"
+                        >
+                          <X size={20} />
+                        </button>
                       </div>
 
-                      {/* Total SP Box */}
-                      <div className="flex-1 bg-[#F3F5F2] rounded-[12px] py-3.5 px-2 flex flex-col items-center justify-center gap-0.5">
-                        <span className="text-[10px] font-bold text-[#111617]/40 uppercase tracking-widest">Total SP</span>
-                        <span className="text-[24px] leading-none font-black text-[#111617] tracking-tight text-center">
-                          {activeBill.totalSp}
-                        </span>
-                      </div>
-                    </div>
-
-                    {/* Action Area: Continue Button or Payment Status Toggle */}
-                    <div className="px-4 pb-4 shrink-0 transition-all relative">
-                      <AnimatePresence mode="wait">
-                        {!isMobilePaymentDrawerOpen ? (
-                          <motion.div
-                            key="continue-btn-group"
-                            initial={{ opacity: 0, scale: 0.95 }}
-                            animate={{ opacity: 1, scale: 1 }}
-                            exit={{ opacity: 0, scale: 0.95 }}
-                            transition={{ duration: 0.15 }}
-                            className="flex gap-2 w-full"
-                          >
-                            <button
-                              onClick={handleCancelCurrentBill}
-                              className="w-[60px] shrink-0 bg-[#daf4d7] hover:bg-[#c8e6c4] active:scale-[0.98] transition-all rounded-[12px] flex items-center justify-center text-[#111617]/60 border border-gray-200/50"
-                              title="Cancel Bill"
-                            >
-                              <X size={26} strokeWidth={3} />
-                            </button>
-                            <button
-                              onClick={() => setIsMobilePaymentDrawerOpen(true)}
-                              className="flex-1 py-3 bg-[#88DE7D] hover:bg-[#7cd472] active:scale-[0.98] transition-all rounded-[12px] flex items-center justify-center gap-2 text-[#111617] font-semibold text-[16px] shadow-sm"
-                            >
-                              Continue
-                              <ChevronDown size={20} strokeWidth={2.5} className="text-[#111617] mt-0.5" />
-                            </button>
-                          </motion.div>
-                        ) : (
-                          <motion.div
-                            key="payment-toggle"
-                            initial={{ opacity: 0, scale: 0.95 }}
-                            animate={{ opacity: 1, scale: 1 }}
-                            exit={{ opacity: 0, scale: 0.95 }}
-                            transition={{ duration: 0.15 }}
-                            className="bg-[#F3F5F2] p-1 rounded-[12px] flex"
-                          >
-                            <button
-                              onClick={() => updateActiveBill({ isPaid: true })}
-                              className={`flex-1 py-2.5 rounded-[8px] text-sm font-bold transition-all flex items-center justify-center gap-2 ${activeBill.isPaid
-                                ? 'bg-[#21776A] text-white shadow-sm'
-                                : 'text-[#111617]/40 hover:text-[#111617]/60'
+                      {/* Tab Cards - Scrollable */}
+                      <div className="flex-1 overflow-y-auto px-5 pb-6 space-y-2.5">
+                        {tabs.map((tab) => {
+                          const isActive = activeTabId === tab.id;
+                          return (
+                            <div
+                              key={tab.id}
+                              onClick={() => {
+                                setActiveTabId(tab.id);
+                                setIsMobileTabSwitcherOpen(false);
+                              }}
+                              className={`relative rounded-[16px] p-4 cursor-pointer transition-all active:scale-[0.98] ${isActive
+                                ? 'bg-white shadow-[0_2px_12px_rgba(2,87,92,0.12)] ring-2 ring-[#02575C]/20'
+                                : 'bg-white/70 hover:bg-white'
                                 }`}
                             >
-                              <Check size={14} strokeWidth={3} />
-                              Paid
-                            </button>
-                            <button
-                              onClick={() => updateActiveBill({ isPaid: false })}
-                              className={`flex-1 py-2.5 rounded-[8px] text-sm font-bold transition-all flex items-center justify-center gap-2 ${!activeBill.isPaid
-                                ? 'bg-[#21776A] text-white shadow-sm'
-                                : 'text-[#111617]/40 hover:text-[#111617]/60'
-                                }`}
-                            >
-                              <div className="flex gap-1"><div className="w-1 h-1 bg-current rounded-full"></div><div className="w-1 h-1 bg-current rounded-full"></div><div className="w-1 h-1 bg-current rounded-full"></div></div>
-                              Unpaid
-                            </button>
-                          </motion.div>
-                        )}
-                      </AnimatePresence>
-                    </div>
-                  </div>
-
-                  {/* Expanded Content (Scrollable) */}
-                  <AnimatePresence>
-                    {isMobilePaymentDrawerOpen && (
-                      <motion.div
-                        initial={{ opacity: 0, height: 0 }}
-                        animate={{ opacity: 1, height: 'auto' }}
-                        exit={{ opacity: 0, height: 0 }}
-                        transition={{ duration: 0.25, ease: [0.4, 0, 0.2, 1] }}
-                        className="px-4 pb-4 overflow-y-auto no-scrollbar pointer-events-auto max-h-[60vh] flex flex-col"
-                      >
-                        <div className="space-y-3 pt-1">
-
-                          {/* Payment Fields */}
-                          {activeBill.isPaid && (
-                            <div className="grid grid-cols-2 gap-3 animate-scale-in">
-                              <div className="space-y-1.5">
-                                <label className="text-[10px] font-bold text-[#111617]/40 uppercase tracking-widest pl-1">CASH PAYMENT</label>
-                                <div className="bg-[#F3F5F2] rounded-[12px] p-3.5 flex flex-col gap-2.5">
-                                  <div className="flex items-center gap-1.5">
-                                    <span className="text-[#111617]/30 font-bold text-base">₹</span>
-                                    <input
-                                      type="number"
-                                      inputMode="numeric"
-                                      value={activeBill.cashAmount === 0 ? '' : activeBill.cashAmount}
-                                      onChange={(e) => {
-                                        const val = e.target.value === '' ? 0 : parseFloat(e.target.value);
-                                        const cashVal = isNaN(val) ? 0 : val;
-                                        const remaining = Math.max(0, activeBill.totalAmount - cashVal);
-                                        updateActiveBill({
-                                          cashAmount: cashVal,
-                                          onlineAmount: remaining,
-                                          paymentMethod: cashVal > 0 && remaining === 0 ? PaymentMethod.CASH : PaymentMethod.ONLINE
-                                        });
-                                      }}
-                                      className="w-full bg-transparent font-black text-lg text-[#111617] focus:outline-none focus:ring-0 placeholder:text-[#111617]/20"
-                                      placeholder="0"
-                                    />
+                              <div className="flex items-center justify-between">
+                                <div className="flex-1 min-w-0">
+                                  <div className="flex items-center gap-2">
+                                    {isActive && (
+                                      <div className="w-2 h-2 rounded-full bg-[#02575C] shrink-0" />
+                                    )}
+                                    <span className={`font-semibold text-[15px] truncate ${isActive ? 'text-[#02575C]' : 'text-[#111617]'}`}>
+                                      {tab.bill.customerName || tab.title}
+                                    </span>
                                   </div>
-                                  <button
-                                    onClick={() => handleQuickPayment('CASH')}
-                                    className="w-full py-1.5 bg-white hover:bg-gray-50 rounded-[8px] text-[10px] font-bold text-[#111617]/60 uppercase tracking-widest transition-colors"
-                                  >
-                                    ALL CASH
-                                  </button>
-                                </div>
-                              </div>
-                              <div className="space-y-1.5">
-                                <label className="text-[10px] font-bold text-[#111617]/40 uppercase tracking-widest pl-1">ONLINE PAYMENT</label>
-                                <div className="bg-[#F3F5F2] rounded-[12px] p-3.5 flex flex-col gap-2.5">
-                                  <div className="flex items-center gap-1.5">
-                                    <span className="text-[#111617]/30 font-bold text-base">₹</span>
-                                    <input
-                                      type="number"
-                                      inputMode="numeric"
-                                      value={activeBill.onlineAmount === 0 ? '' : activeBill.onlineAmount}
-                                      onChange={(e) => {
-                                        const val = e.target.value === '' ? 0 : parseFloat(e.target.value);
-                                        const onlineVal = isNaN(val) ? 0 : val;
-                                        const remaining = Math.max(0, activeBill.totalAmount - onlineVal);
-                                        updateActiveBill({
-                                          onlineAmount: onlineVal,
-                                          cashAmount: remaining,
-                                          paymentMethod: onlineVal > 0 && remaining === 0 ? PaymentMethod.ONLINE : PaymentMethod.CASH
-                                        });
-                                      }}
-                                      className="w-full bg-transparent font-black text-lg text-[#111617] focus:outline-none focus:ring-0 placeholder:text-[#111617]/20"
-                                      placeholder="0"
-                                    />
+                                  <div className="flex items-center gap-3 mt-1 ml-4">
+                                    <span className="text-[12px] text-[#111617]/40">{tab.bill.items.length} items</span>
+                                    <span className="text-[14px] font-bold text-[#111617]">₹{tab.bill.totalAmount.toLocaleString()}</span>
                                   </div>
-                                  <button
-                                    onClick={() => handleQuickPayment('ONLINE')}
-                                    className="w-full py-1.5 bg-[#DAF4D7] hover:bg-[#c8edc3] rounded-[8px] text-[10px] font-bold text-[#21776A] uppercase tracking-widest transition-colors"
-                                  >
-                                    ALL ONLINE
-                                  </button>
                                 </div>
+                                {/* Close button */}
+                                {tabs.length > 1 && (
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleCloseTab(e as any, tab.id);
+                                    }}
+                                    className="p-1.5 text-[#111617]/20 hover:text-red-500 hover:bg-red-50 rounded-full transition-colors shrink-0 ml-2"
+                                  >
+                                    <X size={16} />
+                                  </button>
+                                )}
                               </div>
                             </div>
-                          )}
+                          );
+                        })}
 
-                          {/* Apply Discount */}
-                          <div>
-                            <motion.div
-                              layout
-                              className={`bg-[#DAF4D7] overflow-hidden transition-colors ${isDiscountPanelOpen ? 'rounded-[16px]' : 'rounded-[12px] hover:bg-[#c8edc3]'}`}
-                            >
+                        {/* Create New Bill Button */}
+                        <button
+                          onClick={() => {
+                            handleNewTab();
+                            setIsMobileTabSwitcherOpen(false);
+                          }}
+                          className="w-full py-3.5 border-[0.5px] border-dashed border-[#02575C]/40 rounded-[16px] text-[#02575C] hover:bg-[#02575C]/5 transition-all flex items-center justify-center gap-2 font-semibold text-[14px]"
+                        >
+                          <Plus size={18} strokeWidth={2} />
+                          Create New Bill
+                        </button>
+                      </div>
+                    </motion.div>
+                  </>
+                )}
+              </AnimatePresence>,
+              document.body
+            )}
+
+            {/* ===== NEW: Mobile Payment Page (Slide-Left Transition) ===== */}
+            {createPortal(
+              <AnimatePresence>
+                {isMobilePaymentPageOpen && (
+                  <motion.div
+                    initial={{ x: '100%' }}
+                    animate={{ x: 0 }}
+                    exit={{ x: '100%' }}
+                    transition={{ type: 'tween', ease: [0.32, 0.72, 0, 1], duration: 0.35 }}
+                    className="fixed inset-0 z-[80] bg-[#F3F5F2] flex flex-col md:hidden"
+                  >
+                    {/* Header */}
+                    <div className="px-5 py-4 flex items-center gap-3 bg-[#F3F5F2] shrink-0">
+                      <button
+                        onClick={() => setIsMobilePaymentPageOpen(false)}
+                        className="w-[36px] h-[36px] flex items-center justify-center bg-white rounded-full shadow-sm active:scale-95 transition-transform"
+                      >
+                        <ChevronLeft size={20} strokeWidth={2.5} className="text-[#111617]" />
+                      </button>
+                      <h2 className="text-[18px] font-bold text-[#111617]">Payment & Billing</h2>
+                    </div>
+
+                    {/* Stats Bar - Clean White */}
+                    <div className="mx-4 mb-3 bg-white rounded-[20px] shadow-sm">
+                      <div className="flex items-center px-5 py-4">
+                        <div className="flex-1 flex flex-col items-center">
+                          <span className="text-[10px] font-medium text-[#797979] uppercase tracking-wide mb-1">Items</span>
+                          <span className="text-[22px] font-bold text-[#02575C] leading-none">
+                            {activeBill.items.reduce((sum, i) => sum + i.quantity, 0)}
+                          </span>
+                        </div>
+                        <div className="w-[1px] h-[32px] bg-[#EFEFEF]" />
+                        <div className="flex-1 flex flex-col items-center">
+                          <span className="text-[10px] font-medium text-[#797979] uppercase tracking-wide mb-1">Total SP</span>
+                          <span className="text-[22px] font-bold text-[#02575C] leading-none">{activeBill.totalSp}</span>
+                        </div>
+                        <div className="w-[1px] h-[32px] bg-[#EFEFEF]" />
+                        <div className="flex-[1.2] flex flex-col items-center">
+                          <span className="text-[10px] font-medium text-[#797979] uppercase tracking-wide mb-1">Net Amount</span>
+                          <span className="text-[22px] font-bold text-[#02575C] leading-none tracking-[-0.5px]">₹{activeBill.totalAmount.toLocaleString()}</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Scrollable Content */}
+                    <div className="flex-1 overflow-y-auto px-4 pb-6 space-y-3">
+
+                      {/* Payment Status Toggle */}
+                      <div className="bg-white rounded-[16px] p-1 flex">
+                        <button
+                          onClick={() => updateActiveBill({ isPaid: true })}
+                          className={`flex-1 py-3 rounded-[12px] text-[14px] font-bold transition-all flex items-center justify-center gap-2 ${activeBill.isPaid
+                            ? 'bg-[#02575C] text-white shadow-sm'
+                            : 'text-[#111617]/40 hover:text-[#111617]/60'
+                            }`}
+                        >
+                          <Check size={14} strokeWidth={3} />
+                          Paid
+                        </button>
+                        <button
+                          onClick={() => updateActiveBill({ isPaid: false })}
+                          className={`flex-1 py-3 rounded-[12px] text-[14px] font-bold transition-all flex items-center justify-center gap-2 ${!activeBill.isPaid
+                            ? 'bg-[#02575C] text-white shadow-sm'
+                            : 'text-[#111617]/40 hover:text-[#111617]/60'
+                            }`}
+                        >
+                          <div className="flex gap-1"><div className="w-1 h-1 bg-current rounded-full"></div><div className="w-1 h-1 bg-current rounded-full"></div><div className="w-1 h-1 bg-current rounded-full"></div></div>
+                          Unpaid
+                        </button>
+                      </div>
+
+                      {/* Payment Fields */}
+                      {activeBill.isPaid && (
+                        <div className="grid grid-cols-2 gap-3">
+                          <div className="space-y-1.5">
+                            <label className="text-[10px] font-bold text-[#797979] uppercase tracking-widest pl-1">CASH PAYMENT</label>
+                            <div className="bg-white rounded-[14px] p-3.5 flex flex-col gap-2.5">
+                              <div className="flex items-center gap-1.5">
+                                <span className="text-[#111617]/30 font-bold text-base">₹</span>
+                                <input
+                                  type="number"
+                                  inputMode="numeric"
+                                  value={activeBill.cashAmount === 0 ? '' : activeBill.cashAmount}
+                                  onChange={(e) => {
+                                    const val = e.target.value === '' ? 0 : parseFloat(e.target.value);
+                                    const cashVal = isNaN(val) ? 0 : val;
+                                    const remaining = Math.max(0, activeBill.totalAmount - cashVal);
+                                    updateActiveBill({
+                                      cashAmount: cashVal,
+                                      onlineAmount: remaining,
+                                      paymentMethod: cashVal > 0 && remaining === 0 ? PaymentMethod.CASH : PaymentMethod.ONLINE
+                                    });
+                                  }}
+                                  className="w-full bg-transparent font-black text-lg text-[#111617] focus:outline-none focus:ring-0 placeholder:text-[#111617]/20"
+                                  placeholder="0"
+                                />
+                              </div>
                               <button
-                                onClick={() => setIsDiscountPanelOpen(!isDiscountPanelOpen)}
-                                className={`w-full flex items-center justify-between ${isDiscountPanelOpen ? 'p-3.5 pb-2 cursor-pointer' : 'p-3.5 cursor-pointer'}`}
+                                onClick={() => handleQuickPayment('CASH')}
+                                className="w-full py-1.5 bg-[#F3F5F2] hover:bg-gray-100 rounded-[8px] text-[10px] font-bold text-[#111617]/60 uppercase tracking-widest transition-colors"
                               >
-                                <div className="flex items-center gap-2.5">
-                                  <div className="w-7 h-7 bg-[#21776A] rounded-[6px] flex items-center justify-center font-bold text-white text-sm shrink-0">%</div>
-                                  <span className="font-semibold text-[#21776A] text-[14px]">Apply Discount</span>
-                                </div>
-                                <motion.div
-                                  animate={{ rotate: isDiscountPanelOpen ? 0 : 90 }}
-                                  transition={{ duration: 0.2 }}
-                                  className="text-[#21776A]/50 pr-1"
-                                >
-                                  <ChevronUp size={18} />
-                                </motion.div>
+                                ALL CASH
                               </button>
+                            </div>
+                          </div>
+                          <div className="space-y-1.5">
+                            <label className="text-[10px] font-bold text-[#797979] uppercase tracking-widest pl-1">ONLINE PAYMENT</label>
+                            <div className="bg-white rounded-[14px] p-3.5 flex flex-col gap-2.5">
+                              <div className="flex items-center gap-1.5">
+                                <span className="text-[#111617]/30 font-bold text-base">₹</span>
+                                <input
+                                  type="number"
+                                  inputMode="numeric"
+                                  value={activeBill.onlineAmount === 0 ? '' : activeBill.onlineAmount}
+                                  onChange={(e) => {
+                                    const val = e.target.value === '' ? 0 : parseFloat(e.target.value);
+                                    const onlineVal = isNaN(val) ? 0 : val;
+                                    const remaining = Math.max(0, activeBill.totalAmount - onlineVal);
+                                    updateActiveBill({
+                                      onlineAmount: onlineVal,
+                                      cashAmount: remaining,
+                                      paymentMethod: onlineVal > 0 && remaining === 0 ? PaymentMethod.ONLINE : PaymentMethod.CASH
+                                    });
+                                  }}
+                                  className="w-full bg-transparent font-black text-lg text-[#111617] focus:outline-none focus:ring-0 placeholder:text-[#111617]/20"
+                                  placeholder="0"
+                                />
+                              </div>
+                              <button
+                                onClick={() => handleQuickPayment('ONLINE')}
+                                className="w-full py-1.5 bg-[#E7FAFF] hover:bg-[#d4f0f8] rounded-[8px] text-[10px] font-bold text-[#02575C] uppercase tracking-widest transition-colors"
+                              >
+                                ALL ONLINE
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      )}
 
-                              <AnimatePresence>
-                                {isDiscountPanelOpen && (
-                                  <motion.div
-                                    initial={{ height: 0, opacity: 0 }}
-                                    animate={{ height: "auto", opacity: 1 }}
-                                    exit={{ height: 0, opacity: 0 }}
-                                    transition={{ duration: 0.2, ease: "easeInOut" }}
-                                  >
-                                    <div className="p-3.5 pt-1.5 space-y-3 flex flex-col justify-center">
-                                      <div className="grid grid-cols-2 gap-3">
-                                        <div className="space-y-1.5">
-                                          <label className="text-[9px] font-bold text-[#21776A]/60 uppercase tracking-widest text-center block">% DISCOUNT</label>
-                                          <div className="bg-white rounded-[8px] p-2.5 flex justify-center">
-                                            <input
-                                              type="number"
-                                              inputMode="numeric"
-                                              value={activeBill.discountType === 'percentage' ? activeBill.discountValue || '' : ''}
-                                              onChange={(e) => {
-                                                const val = parseFloat(e.target.value);
-                                                applyDiscount('percentage', isNaN(val) ? 0 : val);
-                                              }}
-                                              className="w-16 text-center text-lg font-black text-[#111617] focus:outline-none bg-transparent placeholder:text-[#111617]/20"
-                                              placeholder="0"
-                                            />
-                                          </div>
-                                        </div>
-                                        <div className="space-y-1.5">
-                                          <label className="text-[9px] font-bold text-[#21776A]/60 uppercase tracking-widest text-center block">AMOUNT</label>
-                                          <div className="bg-white rounded-[8px] p-2.5 flex justify-center items-center gap-1">
-                                            <span className="text-[#111617]/30 font-bold text-sm">₹</span>
-                                            <input
-                                              type="number"
-                                              inputMode="numeric"
-                                              value={activeBill.discountType === 'amount' ? activeBill.discountValue || '' : ''}
-                                              onChange={(e) => {
-                                                const val = parseFloat(e.target.value);
-                                                applyDiscount('amount', isNaN(val) ? 0 : val);
-                                              }}
-                                              className="w-16 text-left text-lg font-black text-[#111617] focus:outline-none bg-transparent placeholder:text-[#111617]/20"
-                                              placeholder="0"
-                                            />
-                                          </div>
-                                        </div>
-                                      </div>
+                      {/* Apply Discount */}
+                      <div>
+                        <motion.div
+                          layout
+                          className={`bg-white overflow-hidden transition-colors ${isDiscountPanelOpen ? 'rounded-[16px]' : 'rounded-[14px]'}`}
+                        >
+                          <button
+                            onClick={() => setIsDiscountPanelOpen(!isDiscountPanelOpen)}
+                            className={`w-full flex items-center justify-between ${isDiscountPanelOpen ? 'p-3.5 pb-2 cursor-pointer' : 'p-3.5 cursor-pointer'}`}
+                          >
+                            <div className="flex items-center gap-2.5">
+                              <div className="w-7 h-7 bg-[#02575C] rounded-[6px] flex items-center justify-center font-bold text-white text-sm shrink-0">%</div>
+                              <span className="font-semibold text-[#02575C] text-[14px]">Apply Discount</span>
+                            </div>
+                            <motion.div
+                              animate={{ rotate: isDiscountPanelOpen ? 0 : 90 }}
+                              transition={{ duration: 0.2 }}
+                              className="text-[#02575C]/50 pr-1"
+                            >
+                              <ChevronUp size={18} />
+                            </motion.div>
+                          </button>
 
-                                      <div className="border-t border-[#21776A]/15 pt-3 flex flex-col gap-1.5">
-                                        <div className="flex justify-between items-center px-0.5">
-                                          <span className="text-xs font-semibold text-[#21776A]/70">Discounted Amount</span>
-                                          <span className="text-[13px] font-bold text-[#21776A] tracking-tight">- ₹{activeBill.discountAmount || 0}</span>
-                                        </div>
-                                        <div className="flex justify-between items-center px-0.5">
-                                          <span className="text-sm font-bold text-[#111617]">Final Net Amount</span>
-                                          <span className="text-lg font-black text-[#111617] tracking-tight">₹{activeBill.totalAmount}</span>
-                                        </div>
+                          <AnimatePresence>
+                            {isDiscountPanelOpen && (
+                              <motion.div
+                                initial={{ height: 0, opacity: 0 }}
+                                animate={{ height: "auto", opacity: 1 }}
+                                exit={{ height: 0, opacity: 0 }}
+                                transition={{ duration: 0.2, ease: "easeInOut" }}
+                              >
+                                <div className="p-3.5 pt-1.5 space-y-3 flex flex-col justify-center">
+                                  <div className="grid grid-cols-2 gap-3">
+                                    <div className="space-y-1.5">
+                                      <label className="text-[9px] font-bold text-[#02575C]/60 uppercase tracking-widest text-center block">% DISCOUNT</label>
+                                      <div className="bg-[#F3F5F2] rounded-[8px] p-2.5 flex justify-center">
+                                        <input
+                                          type="number"
+                                          inputMode="numeric"
+                                          value={activeBill.discountType === 'percentage' ? activeBill.discountValue || '' : ''}
+                                          onChange={(e) => {
+                                            const val = parseFloat(e.target.value);
+                                            applyDiscount('percentage', isNaN(val) ? 0 : val);
+                                          }}
+                                          className="w-16 text-center text-lg font-black text-[#111617] focus:outline-none bg-transparent placeholder:text-[#111617]/20"
+                                          placeholder="0"
+                                        />
                                       </div>
                                     </div>
-                                  </motion.div>
-                                )}
-                              </AnimatePresence>
-                            </motion.div>
-                          </div>
+                                    <div className="space-y-1.5">
+                                      <label className="text-[9px] font-bold text-[#02575C]/60 uppercase tracking-widest text-center block">AMOUNT</label>
+                                      <div className="bg-[#F3F5F2] rounded-[8px] p-2.5 flex justify-center items-center gap-1">
+                                        <span className="text-[#111617]/30 font-bold text-sm">₹</span>
+                                        <input
+                                          type="number"
+                                          inputMode="numeric"
+                                          value={activeBill.discountType === 'amount' ? activeBill.discountValue || '' : ''}
+                                          onChange={(e) => {
+                                            const val = parseFloat(e.target.value);
+                                            applyDiscount('amount', isNaN(val) ? 0 : val);
+                                          }}
+                                          className="w-16 text-left text-lg font-black text-[#111617] focus:outline-none bg-transparent placeholder:text-[#111617]/20"
+                                          placeholder="0"
+                                        />
+                                      </div>
+                                    </div>
+                                  </div>
 
-                          {/* Show SP Toggle */}
-                          <div className="space-y-2">
-                            <div className="w-full bg-[#F3F5F2] rounded-[12px] p-3.5 flex items-center justify-between">
-                              <div className="flex items-center gap-2.5">
-                                <div className="text-[#111617]/30">
-                                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                    <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z" />
-                                    <circle cx="12" cy="12" r="3" />
-                                  </svg>
+                                  <div className="border-t border-[#02575C]/15 pt-3 flex flex-col gap-1.5">
+                                    <div className="flex justify-between items-center px-0.5">
+                                      <span className="text-xs font-semibold text-[#02575C]/70">Discounted Amount</span>
+                                      <span className="text-[13px] font-bold text-[#02575C] tracking-tight">- ₹{activeBill.discountAmount || 0}</span>
+                                    </div>
+                                    <div className="flex justify-between items-center px-0.5">
+                                      <span className="text-sm font-bold text-[#111617]">Final Net Amount</span>
+                                      <span className="text-lg font-black text-[#111617] tracking-tight">₹{activeBill.totalAmount}</span>
+                                    </div>
+                                  </div>
                                 </div>
-                                <span className="font-semibold text-[#111617] text-[13px]">Show SP on bill</span>
-                              </div>
+                              </motion.div>
+                            )}
+                          </AnimatePresence>
+                        </motion.div>
+                      </div>
 
-                              <div
-                                className={`w-11 h-6 rounded-full p-1 cursor-pointer transition-colors flex items-center ${activeBill.showSpOnBill !== false ? 'bg-[#21776A]' : 'bg-[#111617]/15'}`}
-                                onClick={() => updateActiveBill({ showSpOnBill: activeBill.showSpOnBill === false ? true : false })}
-                              >
-                                <div className={`bg-white w-4 h-4 rounded-full shadow-sm transform transition-transform ${activeBill.showSpOnBill !== false ? 'translate-x-5' : 'translate-x-0'}`} />
-                              </div>
+                      {/* Toggles Section */}
+                      <div className="space-y-2">
+                        {/* Show SP Toggle */}
+                        <div className="w-full bg-white rounded-[14px] p-3.5 flex items-center justify-between">
+                          <div className="flex items-center gap-2.5">
+                            <div className="text-[#111617]/30">
+                              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z" />
+                                <circle cx="12" cy="12" r="3" />
+                              </svg>
                             </div>
-
-                            {/* Send on WhatsApp Toggle */}
-                            <div className="w-full bg-[#F3F5F2] rounded-[12px] p-3.5 flex items-center justify-between">
-                              <div className="flex items-center gap-2.5">
-                                <div className="text-[#111617]/30">
-                                  <MessageSquare size={20} className="text-[#111617]/50" />
-                                </div>
-                                <span className="font-semibold text-[#111617] text-[13px]">Send on WhatsApp</span>
-                              </div>
-
-                              <div
-                                className={`w-11 h-6 rounded-full p-1 cursor-pointer transition-colors flex items-center ${activeBill.sendWhatsapp !== false ? 'bg-[#21776A]' : 'bg-[#111617]/15'}`}
-                                onClick={() => updateActiveBill({ sendWhatsapp: activeBill.sendWhatsapp === false ? true : false })}
-                              >
-                                <div className={`bg-white w-4 h-4 rounded-full shadow-sm transform transition-transform ${activeBill.sendWhatsapp !== false ? 'translate-x-5' : 'translate-x-0'}`} />
-                              </div>
-                            </div>
+                            <span className="font-semibold text-[#111617] text-[13px]">Show SP on bill</span>
                           </div>
 
-                          {/* Action Buttons */}
-                          <div className="flex gap-3 pt-2 pb-1">
-                            <button
-                              onClick={handleCancelCurrentBill}
-                              className="w-1/2 py-3.5 bg-[#daf4d7] text-[#111617]/60 font-bold text-[14px] tracking-wide rounded-[12px] hover:bg-[#c8e6c4] transition-colors text-center cursor-pointer">
-                              Cancel Bill
-                            </button>
-                            <button
-                              onClick={() => {
-                                setIsMobilePaymentDrawerOpen(false);
-                                handleGenerateBill();
-                              }}
-                              className="w-1/2 py-3.5 bg-[#88DE7D] hover:bg-[#7cd472] active:scale-[0.98] transition-all rounded-[12px] text-[#111617] font-bold text-[14px] tracking-wide shadow-sm text-center cursor-pointer"
-                            >
-                              {activeBill.id.startsWith('#') ? 'Update Bill' : 'Generate Bill'}
-                            </button>
+                          <div
+                            className={`w-11 h-6 rounded-full p-1 cursor-pointer transition-colors flex items-center ${activeBill.showSpOnBill !== false ? 'bg-[#02575C]' : 'bg-[#111617]/15'}`}
+                            onClick={() => updateActiveBill({ showSpOnBill: activeBill.showSpOnBill === false ? true : false })}
+                          >
+                            <div className={`bg-white w-4 h-4 rounded-full shadow-sm transform transition-transform ${activeBill.showSpOnBill !== false ? 'translate-x-5' : 'translate-x-0'}`} />
                           </div>
-
                         </div>
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
-                </motion.div>
-              </div>,
+
+                        {/* Send on WhatsApp Toggle */}
+                        <div className="w-full bg-white rounded-[14px] p-3.5 flex items-center justify-between">
+                          <div className="flex items-center gap-2.5">
+                            <div className="text-[#111617]/30">
+                              <MessageSquare size={20} className="text-[#111617]/50" />
+                            </div>
+                            <span className="font-semibold text-[#111617] text-[13px]">Send on WhatsApp</span>
+                          </div>
+
+                          <div
+                            className={`w-11 h-6 rounded-full p-1 cursor-pointer transition-colors flex items-center ${activeBill.sendWhatsapp !== false ? 'bg-[#02575C]' : 'bg-[#111617]/15'}`}
+                            onClick={() => updateActiveBill({ sendWhatsapp: activeBill.sendWhatsapp === false ? true : false })}
+                          >
+                            <div className={`bg-white w-4 h-4 rounded-full shadow-sm transform transition-transform ${activeBill.sendWhatsapp !== false ? 'translate-x-5' : 'translate-x-0'}`} />
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Bottom Action - Fixed */}
+                    <div className="px-4 py-4 bg-[#F3F5F2] shrink-0 safe-area-bottom">
+                      <button
+                        onClick={() => {
+                          setIsMobilePaymentPageOpen(false);
+                          handleGenerateBill();
+                        }}
+                        className="w-full h-[52px] bg-[#02575C] hover:bg-[#024a4e] active:scale-[0.98] transition-all rounded-[16px] flex items-center justify-center gap-2 text-white font-medium text-[16px]"
+                      >
+                        {activeBill.id.startsWith('#') ? 'Update Bill' : 'Generate Bill'}
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>
+                      </button>
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>,
               document.body
             )}
 

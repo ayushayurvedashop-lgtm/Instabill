@@ -60,8 +60,6 @@ const STORAGE_KEYS = {
   BILLS: 'vedabill_bills',
   CUSTOMERS: 'vedabill_customers',
   PRODUCTS: 'vedabill_products',
-  GLOBAL_PRODUCTS: 'vedabill_global_products',
-  LOCAL_INVENTORY: 'vedabill_local_inventory',
   SETTINGS: 'vedabill_settings',
   SP_TASKS: 'vedabill_sp_tasks',
   CASH_DEDUCTIONS: 'vedabill_cash_deductions'
@@ -88,8 +86,6 @@ const saveLocal = (key: string, data: any) => {
 // Deduplicate bills by ID to prevent duplicate key errors in React and data corruption
 const deduplicateBills = (billList: Bill[]): Bill[] => {
   const map = new Map<string, Bill>();
-  // By iterating, the last occurrence of the ID will overwrite previous ones.
-  // This helps when a newer updated version of a bill shares the same ID.
   billList.forEach(b => map.set(b.id, b));
   return Array.from(map.values());
 };
@@ -97,18 +93,11 @@ const deduplicateBills = (billList: Bill[]): Bill[] => {
 let bills: Bill[] = deduplicateBills(loadLocal(STORAGE_KEYS.BILLS));
 let customers: Customer[] = loadLocal(STORAGE_KEYS.CUSTOMERS);
 
-// Phase 7: Global Catalog + Local Inventory
-let globalProducts: Product[] = loadLocal(STORAGE_KEYS.GLOBAL_PRODUCTS);
-let localInventory: Record<string, number> = loadLocal(STORAGE_KEYS.LOCAL_INVENTORY) || {};
+// Per-shop products (each shop has its own catalog with stock)
 let products: Product[] = loadLocal(STORAGE_KEYS.PRODUCTS);
 
-const computeProducts = () => {
-  products = globalProducts.map(p => ({
-    ...p,
-    stock: localInventory[p.id] !== undefined ? localInventory[p.id] : 50
-  }));
-  saveLocal(STORAGE_KEYS.PRODUCTS, products);
-};
+// Catalog version tracking for update notifications
+let catalogVersion: number = 0;
 
 const DEFAULT_SETTINGS: AppSettings = {
   shopName: 'Asclepius Wellness',
@@ -174,30 +163,27 @@ const initStore = () => {
       if (error.code === 'permission-denied') isOffline = true;
     }));
 
-    // 3a. Listen to Global Products Catalog
-    activeUnsubscribers.push(onSnapshot(collection(db, 'products'), (snapshot) => {
-      globalProducts = snapshot.docs.map(doc => {
+    // 3. Listen to Per-Shop Products (each shop has its own catalog)
+    activeUnsubscribers.push(onSnapshot(shopCol('products'), (snapshot) => {
+      products = snapshot.docs.map(doc => {
         const data = doc.data();
         return { ...data, id: doc.id } as Product;
       });
-      saveLocal(STORAGE_KEYS.GLOBAL_PRODUCTS, globalProducts);
-      computeProducts();
+      saveLocal(STORAGE_KEYS.PRODUCTS, products);
       notify();
     }, (error) => {
       if (error.code === 'permission-denied') isOffline = true;
     }));
 
-    // 3b. Listen to Local Inventory Overrides
-    activeUnsubscribers.push(onSnapshot(shopCol('inventory'), (snapshot) => {
-      localInventory = {};
-      snapshot.docs.forEach(doc => {
-        localInventory[doc.id] = doc.data().stock;
-      });
-      saveLocal(STORAGE_KEYS.LOCAL_INVENTORY, localInventory);
-      computeProducts();
-      notify();
+    // 3b. Listen to catalog version for update notifications
+    activeUnsubscribers.push(onSnapshot(doc(db, 'default_catalog_meta', 'current'), (docSnap) => {
+      if (docSnap.exists()) {
+        catalogVersion = docSnap.data().version || 0;
+        notify();
+      }
     }, (error) => {
-      if (error.code === 'permission-denied') isOffline = true;
+      // Not critical — just won't get update notifications
+      console.warn('Catalog meta listener failed', error);
     }));
 
     // 4. Listen to Settings
@@ -381,11 +367,12 @@ export const store = {
 
     // Update local product stock immediately
     bill.items.forEach(item => {
-      const currentStock = localInventory[item.id] !== undefined ? localInventory[item.id] : 50;
-      localInventory[item.id] = currentStock - item.quantity;
+      const pIndex = products.findIndex(p => p.id === item.id);
+      if (pIndex > -1) {
+        products[pIndex] = { ...products[pIndex], stock: products[pIndex].stock - item.quantity };
+      }
     });
-    computeProducts();
-    saveLocal(STORAGE_KEYS.LOCAL_INVENTORY, localInventory);
+    saveLocal(STORAGE_KEYS.PRODUCTS, products);
 
     // Update local customer stats immediately
     const cIndex = customers.findIndex(c => c.name === bill.customerName);
@@ -428,40 +415,10 @@ export const store = {
         });
       }
 
-      // D. Deduct Stock
-      bill.items.forEach(async (item) => {
-        // We must fetch the latest stock from cloud before decrementing to avoid overwriting 
-        // updates made by other clients or race conditions.
-        // However, we are in a batch commit. We cannot read in a write batch.
-        // But we can blindly decrement using 'increment(-qty)' which is safe and atomic.
-        // The existing code ALREADY DOES THIS: batch.update(productRef, { stock: increment(-item.quantity) });
-        // So the Cloud logic is correct.
-
-        // The issue described by user ("resets to 50") sounds like the local state 'products' 
-        // is having its stock reset or the `addBill` function is using an old product object?
-
-        // Wait, looking at lines 172-177 (Local Update):
-        // bill.items.forEach(item => {
-        //   const pIndex = products.findIndex(p => p.id === item.id);
-        //   if (pIndex > -1) {
-        //     products[pIndex].stock -= item.quantity;
-        //   }
-        // });
-
-        // If 'products' contains stale data (e.g. from local storage load that defaulted to 50),
-        // then subtracting 1 from 50 gives 49, overwriting the "1" the user saw.
-
-        // But how did the user "set stock to 1"? 
-        // If they updated it via UI, it calls 'updateProduct' which updates local `products` AND cloud.
-        // So `products` in memory SHOULD be correct (1).
-
-        // Unless... `initStore` (lines 96-103) is receiving a snapshot that somehow reverts it?
-        // Or if the initial load (lines 48) loaded old data?
-
-        // Let's ensure strict atomic updates in cloud. 
-        // The code below IS using atomic increment.
-        const invRef = shopDocRef('inventory', item.id);
-        batch.set(invRef, { stock: increment(-item.quantity) }, { merge: true });
+      // D. Deduct Stock (per-shop products)
+      bill.items.forEach((item) => {
+        const productRef = shopDocRef('products', item.id);
+        batch.set(productRef, { stock: increment(-item.quantity) }, { merge: true });
       });
 
       await batch.commit();
@@ -479,11 +436,12 @@ export const store = {
 
     // 2. Revert Stock (Add back)
     bill.items.forEach(item => {
-      const currentStock = localInventory[item.id] !== undefined ? localInventory[item.id] : 50;
-      localInventory[item.id] = currentStock + item.quantity;
+      const pIndex = products.findIndex(p => p.id === item.id);
+      if (pIndex > -1) {
+        products[pIndex] = { ...products[pIndex], stock: products[pIndex].stock + item.quantity };
+      }
     });
-    computeProducts();
-    saveLocal(STORAGE_KEYS.LOCAL_INVENTORY, localInventory);
+    saveLocal(STORAGE_KEYS.PRODUCTS, products);
 
     // 3. Revert Customer Stats
     const cIndex = customers.findIndex(c => c.name === bill.customerName);
@@ -512,10 +470,13 @@ export const store = {
       // Delete Snapshot
       batch.delete(shopDocRef('bill_snapshots', bill.id));
 
-      // Update Products
+      // Update Products stock (per-shop)
       bill.items.forEach(item => {
-        const invRef = shopDocRef('inventory', item.id);
-        batch.set(invRef, { stock: localInventory[item.id] }, { merge: true });
+        const product = products.find(p => p.id === item.id);
+        if (product) {
+          const productRef = shopDocRef('products', item.id);
+          batch.set(productRef, { stock: product.stock }, { merge: true });
+        }
       });
 
       // Update Customer
@@ -546,18 +507,21 @@ export const store = {
 
     // 2. Revert stock for old items
     oldBill.items.forEach(item => {
-      const currentStock = localInventory[item.id] !== undefined ? localInventory[item.id] : 50;
-      localInventory[item.id] = currentStock + item.quantity;
+      const pIndex = products.findIndex(p => p.id === item.id);
+      if (pIndex > -1) {
+        products[pIndex] = { ...products[pIndex], stock: products[pIndex].stock + item.quantity };
+      }
     });
 
     // 3. Deduct stock for new items
     updatedBill.items.forEach(item => {
-      const currentStock = localInventory[item.id] !== undefined ? localInventory[item.id] : 50;
-      localInventory[item.id] = currentStock - item.quantity;
+      const pIndex = products.findIndex(p => p.id === item.id);
+      if (pIndex > -1) {
+        products[pIndex] = { ...products[pIndex], stock: products[pIndex].stock - item.quantity };
+      }
     });
 
-    computeProducts();
-    saveLocal(STORAGE_KEYS.LOCAL_INVENTORY, localInventory);
+    saveLocal(STORAGE_KEYS.PRODUCTS, products);
 
     // 4. Update Customer Stats
     // Revert old stats
@@ -611,15 +575,18 @@ export const store = {
         });
       }
 
-      // Update Products Stock (Cloud)
+      // Update Products Stock (per-shop)
       const affectedProductIds = new Set([
         ...oldBill.items.map(i => i.id),
         ...updatedBill.items.map(i => i.id)
       ]);
 
       affectedProductIds.forEach(pid => {
-        const invRef = shopDocRef('inventory', pid);
-        batch.set(invRef, { stock: localInventory[pid] }, { merge: true });
+        const product = products.find(p => p.id === pid);
+        if (product) {
+          const productRef = shopDocRef('products', pid);
+          batch.set(productRef, { stock: product.stock }, { merge: true });
+        }
       });
 
       // Update Customer (Cloud)
@@ -824,26 +791,18 @@ export const store = {
   addProduct: async (product: Omit<Product, 'id'>) => {
     // 1. Local Update
     const tempId = `prod-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-    const newProduct = { ...product, id: tempId };
-    globalProducts = [...globalProducts, newProduct as Product];
-
-    // Set local inventory immediately if a specific stock is provided
-    if (product.stock !== undefined && product.stock !== 50) {
-      localInventory[tempId] = product.stock;
-      saveLocal(STORAGE_KEYS.LOCAL_INVENTORY, localInventory);
-    }
-
-    computeProducts();
+    const newProduct = { ...product, id: tempId } as Product;
+    products = [...products, newProduct];
+    saveLocal(STORAGE_KEYS.PRODUCTS, products);
     notify();
 
+    // 2. Cloud — write to per-shop products collection
     if (isOffline || !db) return;
     try {
-      const { stock, ...productData } = product as any;
-      const docRef = await addDoc(collection(db, 'products'), productData);
-
-      if (stock !== undefined && stock !== 50) {
-        await setDoc(shopDocRef('inventory', docRef.id), { stock });
-      }
+      const docRef = await addDoc(shopCol('products'), product);
+      // Update local ID to match Firestore-assigned ID
+      products = products.map(p => p.id === tempId ? { ...p, id: docRef.id } : p);
+      saveLocal(STORAGE_KEYS.PRODUCTS, products);
     } catch (error) {
       console.warn("Cloud sync failed (Product saved locally)", error);
     }
@@ -851,38 +810,27 @@ export const store = {
 
   updateProduct: async (updatedProduct: Product) => {
     // 1. Local Update
-    const index = globalProducts.findIndex(p => p.id === updatedProduct.id);
+    const index = products.findIndex(p => p.id === updatedProduct.id);
     if (index > -1 || updatedProduct.id.includes('imported-')) {
       if (index > -1) {
-        globalProducts[index] = updatedProduct;
+        products[index] = updatedProduct;
       } else {
-        globalProducts.push(updatedProduct);
+        products.push(updatedProduct);
       }
-
-      localInventory[updatedProduct.id] = updatedProduct.stock;
-      saveLocal(STORAGE_KEYS.LOCAL_INVENTORY, localInventory);
-      computeProducts();
+      saveLocal(STORAGE_KEYS.PRODUCTS, products);
       notify();
 
+      // 2. Cloud — write to per-shop products collection
       if (isOffline || !db) return;
-
-      // Skip cloud update for temp IDs
       if (updatedProduct.id.includes('prod-')) {
         console.warn("Skipping cloud update for locally created ID");
         return;
       }
 
       try {
-        const { id, stock, ...productData } = updatedProduct as any;
-
-        // Update global catalog
-        const productRef = doc(db, 'products', updatedProduct.id);
+        const { id, ...productData } = updatedProduct as any;
+        const productRef = shopDocRef('products', updatedProduct.id);
         await setDoc(productRef, productData, { merge: true });
-
-        // Update local inventory override
-        const inventoryRef = shopDocRef('inventory', updatedProduct.id);
-        await setDoc(inventoryRef, { stock }, { merge: true });
-
       } catch (error) {
         console.warn("Cloud sync failed (Product update)", error);
       }
@@ -891,24 +839,16 @@ export const store = {
 
   deleteProduct: async (id: string) => {
     // 1. Local
-    globalProducts = globalProducts.filter(p => p.id !== id);
-    delete localInventory[id];
-    saveLocal(STORAGE_KEYS.LOCAL_INVENTORY, localInventory);
-    computeProducts();
+    products = products.filter(p => p.id !== id);
+    saveLocal(STORAGE_KEYS.PRODUCTS, products);
     notify();
 
-    // 2. Cloud
+    // 2. Cloud — delete from per-shop products collection
     if (isOffline || !db) return;
     if (id.includes('prod-')) return;
 
     try {
-      // Global catalog deletion
-      await deleteDoc(doc(db, 'products', id));
-
-      // Local inventory cleanup
-      if (currentShopId) {
-        await deleteDoc(shopDocRef('inventory', id));
-      }
+      await deleteDoc(shopDocRef('products', id));
     } catch (e) {
       console.warn("Cloud delete failed", e);
     }
@@ -916,19 +856,14 @@ export const store = {
 
   clearProducts: async () => {
     // 1. Local
-    globalProducts = [];
-    localInventory = {};
-    saveLocal(STORAGE_KEYS.GLOBAL_PRODUCTS, globalProducts);
-    saveLocal(STORAGE_KEYS.LOCAL_INVENTORY, localInventory);
-    computeProducts();
+    products = [];
+    saveLocal(STORAGE_KEYS.PRODUCTS, products);
     notify();
 
-    // 2. Cloud
+    // 2. Cloud — delete all from per-shop products
     if (isOffline || !db) return;
     try {
       const snapshot = await getDocs(shopCol('products'));
-
-      // Batch delete in chunks of 400 (Firestore limit is 500)
       const chunk = 400;
       for (let i = 0; i < snapshot.docs.length; i += chunk) {
         const batch = writeBatch(db);
@@ -959,7 +894,7 @@ export const store = {
     }
   },
 
-  // Batch import for catalog - Smart Upsert
+  // Batch import for catalog - Smart Upsert (per-shop)
   bulkUpsertProducts: async (newItems: Omit<Product, 'id'>[]) => {
     const batch = db && !isOffline ? writeBatch(db) : null;
     let addedCount = 0;
@@ -975,28 +910,23 @@ export const store = {
           mrp: item.mrp,
           dp: item.dp,
           sp: item.sp,
-          category: item.category // update category if changed
+          category: item.category
         };
 
-        // Local Update
         products = products.map(p => p.id === existingProduct.id ? updatedProduct : p);
         updatedCount++;
 
-        // Cloud Update
         if (batch) {
           const ref = shopDocRef('products', existingProduct.id);
           batch.update(ref, { mrp: item.mrp, dp: item.dp, sp: item.sp, category: item.category });
         }
       } else {
-        // ADD New Product
         const newId = `imported-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`;
-        const newProduct = { ...item, id: newId };
+        const newProduct = { ...item, id: newId, stock: item.stock || 0 };
 
-        // Local Update
         products = [...products, newProduct];
         addedCount++;
 
-        // Cloud Update
         if (batch) {
           const ref = shopDocRef('products', newId);
           batch.set(ref, newProduct);
@@ -1016,6 +946,78 @@ export const store = {
     }
 
     return { added: addedCount, updated: updatedCount };
+  },
+
+  // --- CATALOG VERSION & UPDATE ---
+  getCatalogVersion: () => catalogVersion,
+
+  getShopCatalogVersion: async (): Promise<number> => {
+    if (!db || !currentShopId) return 0;
+    try {
+      const versionDoc = await getDoc(doc(db, 'shops', currentShopId, 'catalog_version', 'current'));
+      return versionDoc.exists() ? (versionDoc.data().version || 0) : 0;
+    } catch {
+      return 0;
+    }
+  },
+
+  importCatalogUpdate: async (): Promise<{ added: number; updated: number }> => {
+    if (!db || !currentShopId) return { added: 0, updated: 0 };
+
+    try {
+      // 1. Fetch default catalog
+      const catalogSnap = await getDocs(collection(db, 'default_catalog'));
+      const defaultItems = catalogSnap.docs.map(d => ({ ...d.data(), id: d.id })) as Product[];
+
+      const batch = writeBatch(db);
+      let addedCount = 0;
+      let updatedCount = 0;
+
+      defaultItems.forEach(catalogItem => {
+        const existing = products.find(p => p.name.toLowerCase() === catalogItem.name.toLowerCase());
+
+        if (existing) {
+          // Update product details but KEEP stock
+          const updated = {
+            ...existing,
+            name: catalogItem.name,
+            category: catalogItem.category,
+            mrp: catalogItem.mrp,
+            dp: catalogItem.dp,
+            sp: catalogItem.sp,
+            // stock stays the same
+          };
+          products = products.map(p => p.id === existing.id ? updated : p);
+          updatedCount++;
+
+          const ref = shopDocRef('products', existing.id);
+          batch.set(ref, { name: catalogItem.name, category: catalogItem.category, mrp: catalogItem.mrp, dp: catalogItem.dp, sp: catalogItem.sp }, { merge: true });
+        } else {
+          // New item — add with stock = 0
+          const newProduct = { ...catalogItem, stock: 0 };
+          products = [...products, newProduct];
+          addedCount++;
+
+          const ref = shopDocRef('products', catalogItem.id);
+          batch.set(ref, { name: catalogItem.name, category: catalogItem.category, mrp: catalogItem.mrp, dp: catalogItem.dp, sp: catalogItem.sp, stock: 0 });
+        }
+      });
+
+      // Update shop's catalog version to match
+      const metaDoc = await getDoc(doc(db, 'default_catalog_meta', 'current'));
+      const latestVersion = metaDoc.exists() ? (metaDoc.data().version || 1) : 1;
+      batch.set(doc(db, 'shops', currentShopId, 'catalog_version', 'current'), { version: latestVersion });
+
+      await batch.commit();
+
+      saveLocal(STORAGE_KEYS.PRODUCTS, products);
+      notify();
+
+      return { added: addedCount, updated: updatedCount };
+    } catch (e) {
+      console.error('Failed to import catalog update', e);
+      return { added: 0, updated: 0 };
+    }
   },
 
   getSmartStockSuggestions: (budget: number = 300000) => {
@@ -1155,6 +1157,81 @@ export const store = {
     }
 
     return { success: true, message: "Local data cleared successfully." };
+  },
+
+  wipeBills: async (includeCloud: boolean = false) => {
+    // 1. Clear Local
+    localStorage.removeItem(STORAGE_KEYS.BILLS);
+    bills = [];
+    notify();
+
+    // 2. Clear Cloud
+    if (includeCloud && !isOffline && db) {
+      try {
+        const snap = await getDocs(shopCol('bills'));
+        const chunk = 400;
+        for (let i = 0; i < snap.docs.length; i += chunk) {
+          const batch = writeBatch(db);
+          snap.docs.slice(i, i + chunk).forEach(d => batch.delete(d.ref));
+          await batch.commit();
+        }
+        return { success: true, message: "Bills wiped from local and cloud." };
+      } catch (error) {
+        console.error("Cloud wipe failed (Bills)", error);
+        return { success: false, message: "Local bills cleared. Cloud wipe failed." };
+      }
+    }
+    return { success: true, message: "Local bills cleared successfully." };
+  },
+
+  wipeCustomers: async (includeCloud: boolean = false) => {
+    // 1. Clear Local
+    localStorage.removeItem(STORAGE_KEYS.CUSTOMERS);
+    customers = [];
+    notify();
+
+    // 2. Clear Cloud
+    if (includeCloud && !isOffline && db) {
+      try {
+        const snap = await getDocs(shopCol('customers'));
+        const chunk = 400;
+        for (let i = 0; i < snap.docs.length; i += chunk) {
+          const batch = writeBatch(db);
+          snap.docs.slice(i, i + chunk).forEach(d => batch.delete(d.ref));
+          await batch.commit();
+        }
+        return { success: true, message: "Customers wiped from local and cloud." };
+      } catch (error) {
+        console.error("Cloud wipe failed (Customers)", error);
+        return { success: false, message: "Local customers cleared. Cloud wipe failed." };
+      }
+    }
+    return { success: true, message: "Local customers cleared successfully." };
+  },
+
+  wipeStock: async (includeCloud: boolean = false) => {
+    // 1. Clear Local
+    localStorage.removeItem(STORAGE_KEYS.PRODUCTS);
+    products = [];
+    notify();
+
+    // 2. Clear Cloud (per-shop products)
+    if (includeCloud && !isOffline && db) {
+      try {
+        const prodSnap = await getDocs(shopCol('products'));
+        const chunk = 400;
+        for (let i = 0; i < prodSnap.docs.length; i += chunk) {
+          const batch = writeBatch(db);
+          prodSnap.docs.slice(i, i + chunk).forEach(d => batch.delete(d.ref));
+          await batch.commit();
+        }
+        return { success: true, message: "Stock wiped from local and cloud." };
+      } catch (error) {
+        console.error("Cloud wipe failed (Stock)", error);
+        return { success: false, message: "Local stock cleared. Cloud wipe failed." };
+      }
+    }
+    return { success: true, message: "Local stock cleared successfully." };
   },
 
   // --- SP TASK MANAGEMENT (NEW) ---

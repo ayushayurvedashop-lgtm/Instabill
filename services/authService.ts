@@ -13,7 +13,8 @@ import {
     query,
     where,
     getDocs,
-    serverTimestamp
+    serverTimestamp,
+    writeBatch
 } from 'firebase/firestore';
 import { ShopProfile, AppSettings } from '../types';
 
@@ -22,7 +23,7 @@ const SUPER_ADMIN_DOMAIN = '@veda.admin';
 
 /**
  * Register a new shop and its owner account.
- * Creates Firebase Auth user + Firestore shop document + initial settings.
+ * Creates Firebase Auth user + Firestore shop document + initial settings + seeds product catalog.
  */
 export const registerShop = async (
     shopName: string,
@@ -44,7 +45,7 @@ export const registerShop = async (
         phone,
         ownerUid: user.uid,
         createdAt: new Date().toISOString(),
-        subscriptionStatus: 'trial',
+        subscriptionStatus: 'none',
         planId: 'basic',
     };
 
@@ -65,6 +66,39 @@ export const registerShop = async (
         phone,
         role: 'shop_admin',
     });
+
+    // 5. Seed per-shop product catalog from default_catalog (all stock = 0)
+    try {
+        const catalogSnap = await getDocs(collection(db, 'default_catalog'));
+        if (!catalogSnap.empty) {
+            // Batch write in chunks of 400 (Firestore limit is 500)
+            const items = catalogSnap.docs;
+            const chunk = 400;
+            for (let i = 0; i < items.length; i += chunk) {
+                const batch = writeBatch(db);
+                items.slice(i, i + chunk).forEach(catalogDoc => {
+                    const data = catalogDoc.data();
+                    const productRef = doc(db, 'shops', shopId, 'products', catalogDoc.id);
+                    batch.set(productRef, {
+                        name: data.name,
+                        category: data.category,
+                        mrp: data.mrp,
+                        dp: data.dp,
+                        sp: data.sp,
+                        stock: 0, // New shops always start with 0 stock
+                    });
+                });
+                await batch.commit();
+            }
+        }
+
+        // Set initial catalog version
+        const metaDoc = await getDoc(doc(db, 'default_catalog_meta', 'current'));
+        const currentVersion = metaDoc.exists() ? (metaDoc.data().version || 1) : 1;
+        await setDoc(doc(db, 'shops', shopId, 'catalog_version', 'current'), { version: currentVersion });
+    } catch (e) {
+        console.warn('Failed to seed product catalog for new shop', e);
+    }
 
     return { user, shopProfile };
 };

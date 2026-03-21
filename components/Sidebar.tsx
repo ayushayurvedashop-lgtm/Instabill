@@ -1,5 +1,5 @@
 import React from 'react';
-import { LayoutDashboard, Receipt, Package, Users, History, LogOut, Plus, Smartphone, Settings, LayoutList, User } from 'lucide-react';
+import { LayoutDashboard, Receipt, Package, Users, History, LogOut, Plus, Smartphone, Settings, LayoutList, User, Crown } from 'lucide-react';
 import { usePWAInstall } from '../hooks/usePWAInstall';
 import { InteractiveMenu } from './ui/modern-mobile-menu';
 import { auth } from '../firebaseConfig';
@@ -36,6 +36,7 @@ const Sidebar: React.FC<SidebarProps> = ({ activeView, setActiveView, onLogout }
     {
       title: 'SYSTEM',
       items: [
+        { id: 'subscription-manager', label: 'Subscription', icon: Crown },
         { id: 'settings', label: 'Settings', icon: Settings },
       ]
     }

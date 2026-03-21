@@ -2,6 +2,7 @@ import { onCall, HttpsError } from "firebase-functions/v2/https";
 import * as logger from "firebase-functions/logger";
 import * as admin from "firebase-admin";
 import * as dotenv from "dotenv";
+import Razorpay from "razorpay";
 
 dotenv.config();
 
@@ -58,9 +59,8 @@ export const sendWhatsappNotification = onCall({ cors: true }, async (request) =
     try {
         // 1. MSG91 Credentials & Config (set MSG91_AUTH_KEY in Firebase config for production)
         const authKey = process.env.MSG91_AUTH_KEY || "489901AythCbMOfajU6973c03eP1";
-        const defaultShopName = "Ayush Ayurveda";
-
-        const { destination, billReference, billUrl, totalAmount, totalSp, isUpdate } = request.data;
+        const { destination, billReference, billUrl, totalAmount, totalSp, isUpdate, shopName } = request.data;
+        const actualShopName = shopName || "Ayush Ayurveda";
         // Campaign slugs: bill-generated1 for new bills, bill-updated1 for updates
         const campaignSlug = isUpdate ? "bill-updated1" : "bill-generated1";
 
@@ -104,7 +104,7 @@ export const sendWhatsappNotification = onCall({ cors: true }, async (request) =
         const variables: Record<string, { type: string; value: string }> = {
             "body_1": {
                 "type": "text",
-                "value": defaultShopName
+                "value": actualShopName
             },
             "body_2": {
                 "type": "text",
@@ -206,9 +206,8 @@ export const sendProductUpdateNotification = onCall({ cors: true }, async (reque
     try {
         const authKey = process.env.MSG91_AUTH_KEY || "489901AythCbMOfajU6973c03eP1";
         const campaignSlug = "pending-products-updated";
-        const defaultShopName = "Ayush Ayurveda";
-
-        const { destination, billReference, productsGiven, billUrl } = request.data;
+        const { destination, billReference, productsGiven, billUrl, shopName } = request.data;
+        const actualShopName = shopName || "Ayush Ayurveda";
 
         logger.info("Inputs received:", { destination, billReference, productsGiven, billUrl });
 
@@ -255,7 +254,7 @@ export const sendProductUpdateNotification = onCall({ cors: true }, async (reque
                                 variables: {
                                     "body_1": {
                                         "type": "text",
-                                        "value": defaultShopName
+                                        "value": actualShopName
                                     },
                                     "body_2": {
                                         "type": "text",
@@ -488,5 +487,89 @@ export const resetShopPassword = onCall({ cors: true }, async (request) => {
             throw new HttpsError('not-found', 'User not found');
         }
         throw new HttpsError('internal', `Failed to reset password: ${error.message}`);
+    }
+});
+
+// ============================================
+// Razorpay Integration
+// ============================================
+
+export const createRazorpayOrder = onCall({ cors: true }, async (request) => {
+    logger.info("--- START createRazorpayOrder ---");
+
+    try {
+        if (!request.auth) {
+            throw new HttpsError('unauthenticated', 'Must be logged in to create a subscription order');
+        }
+
+        const { planId, enterpriseMonths } = request.data;
+        
+        if (!['basic', 'pro', 'enterprise'].includes(planId)) {
+            throw new HttpsError('invalid-argument', 'Invalid plan ID');
+        }
+
+        // Fetch prices from Firestore config
+        const plansDoc = await admin.firestore().collection('config').doc('plans').get();
+        if (!plansDoc.exists) {
+            throw new HttpsError('internal', 'Pricing configuration not found');
+        }
+
+        const prices = plansDoc.data() as any;
+        let amountInRupees = 0;
+
+        if (planId === 'basic') {
+            amountInRupees = prices.basicPrice || 499;
+        } else if (planId === 'pro') {
+            amountInRupees = prices.proPrice || 3999;
+        } else if (planId === 'enterprise') {
+            const months = parseInt(enterpriseMonths) || 1;
+            const monthlyPrice = prices.enterpriseMonthlyPrice || 399;
+            amountInRupees = months * monthlyPrice;
+        }
+
+        // Convert to paise (₹1 = 100 paise)
+        const amountInPaise = Math.round(amountInRupees * 100);
+
+        logger.info(`Creating Razorpay order for plan: ${planId}, amount: ₹${amountInRupees}`);
+
+        // Initialize Razorpay
+        const key_id = process.env.RAZORPAY_KEY_ID;
+        const key_secret = process.env.RAZORPAY_KEY_SECRET;
+
+        if (!key_id || !key_secret) {
+            logger.error("Razorpay API Keys missing from environment");
+            throw new HttpsError('internal', 'Payment gateway misconfigured');
+        }
+
+        const instance = new Razorpay({ key_id, key_secret });
+
+        const options = {
+            amount: amountInPaise,
+            currency: "INR",
+            receipt: `re_${request.auth.uid.substring(0, 10)}_${Date.now()}`,
+            notes: {
+                shopUid: request.auth.uid,
+                planId: planId,
+                enterpriseMonths: enterpriseMonths || 0
+            }
+        };
+
+        const order = await instance.orders.create(options);
+        
+        logger.info(`Successfully created Razorpay order: ${order.id}`);
+        
+        return {
+            orderId: order.id,
+            amount: order.amount,
+            currency: order.currency,
+            keyId: key_id // Send public key to client
+        };
+
+    } catch (error: any) {
+        logger.error("Error creating Razorpay order:", error);
+        if (error instanceof HttpsError) {
+            throw error;
+        }
+        throw new HttpsError('internal', `Failed to create order: ${error.message}`);
     }
 });

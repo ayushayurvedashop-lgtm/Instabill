@@ -32,12 +32,16 @@ var __importStar = (this && this.__importStar) || (function () {
         return result;
     };
 })();
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.resetShopPassword = exports.sendSPDoneNotification = exports.sendProductUpdateNotification = exports.sendWhatsappNotification = exports.getSpeechmaticsToken = exports.getDeepgramApiKey = void 0;
+exports.createRazorpayOrder = exports.resetShopPassword = exports.sendSPDoneNotification = exports.sendProductUpdateNotification = exports.sendWhatsappNotification = exports.getSpeechmaticsToken = exports.getDeepgramApiKey = void 0;
 const https_1 = require("firebase-functions/v2/https");
 const logger = __importStar(require("firebase-functions/logger"));
 const admin = __importStar(require("firebase-admin"));
 const dotenv = __importStar(require("dotenv"));
+const razorpay_1 = __importDefault(require("razorpay"));
 dotenv.config();
 admin.initializeApp();
 // Allow specific origins or just true for all (for development)
@@ -85,8 +89,8 @@ exports.sendWhatsappNotification = (0, https_1.onCall)({ cors: true }, async (re
     try {
         // 1. MSG91 Credentials & Config (set MSG91_AUTH_KEY in Firebase config for production)
         const authKey = process.env.MSG91_AUTH_KEY || "489901AythCbMOfajU6973c03eP1";
-        const defaultShopName = "Ayush Ayurveda";
-        const { destination, billReference, billUrl, totalAmount, totalSp, isUpdate } = request.data;
+        const { destination, billReference, billUrl, totalAmount, totalSp, isUpdate, shopName } = request.data;
+        const actualShopName = shopName || "Ayush Ayurveda";
         // Campaign slugs: bill-generated1 for new bills, bill-updated1 for updates
         const campaignSlug = isUpdate ? "bill-updated1" : "bill-generated1";
         logger.info("Inputs received:", { destination, billReference, billUrl, totalAmount, totalSp, isUpdate, campaignSlug });
@@ -122,7 +126,7 @@ exports.sendWhatsappNotification = (0, https_1.onCall)({ cors: true }, async (re
         const variables = {
             "body_1": {
                 "type": "text",
-                "value": defaultShopName
+                "value": actualShopName
             },
             "body_2": {
                 "type": "text",
@@ -213,8 +217,8 @@ exports.sendProductUpdateNotification = (0, https_1.onCall)({ cors: true }, asyn
     try {
         const authKey = process.env.MSG91_AUTH_KEY || "489901AythCbMOfajU6973c03eP1";
         const campaignSlug = "pending-products-updated";
-        const defaultShopName = "Ayush Ayurveda";
-        const { destination, billReference, productsGiven, billUrl } = request.data;
+        const { destination, billReference, productsGiven, billUrl, shopName } = request.data;
+        const actualShopName = shopName || "Ayush Ayurveda";
         logger.info("Inputs received:", { destination, billReference, productsGiven, billUrl });
         // --- STRICT VALIDATION ---
         if (!destination || typeof destination !== 'string' || !destination.trim()) {
@@ -253,7 +257,7 @@ exports.sendProductUpdateNotification = (0, https_1.onCall)({ cors: true }, asyn
                                 variables: {
                                     "body_1": {
                                         "type": "text",
-                                        "value": defaultShopName
+                                        "value": actualShopName
                                     },
                                     "body_2": {
                                         "type": "text",
@@ -453,6 +457,75 @@ exports.resetShopPassword = (0, https_1.onCall)({ cors: true }, async (request) 
             throw new https_1.HttpsError('not-found', 'User not found');
         }
         throw new https_1.HttpsError('internal', `Failed to reset password: ${error.message}`);
+    }
+});
+// ============================================
+// Razorpay Integration
+// ============================================
+exports.createRazorpayOrder = (0, https_1.onCall)({ cors: true }, async (request) => {
+    logger.info("--- START createRazorpayOrder ---");
+    try {
+        if (!request.auth) {
+            throw new https_1.HttpsError('unauthenticated', 'Must be logged in to create a subscription order');
+        }
+        const { planId, enterpriseMonths } = request.data;
+        if (!['basic', 'pro', 'enterprise'].includes(planId)) {
+            throw new https_1.HttpsError('invalid-argument', 'Invalid plan ID');
+        }
+        // Fetch prices from Firestore config
+        const plansDoc = await admin.firestore().collection('config').doc('plans').get();
+        if (!plansDoc.exists) {
+            throw new https_1.HttpsError('internal', 'Pricing configuration not found');
+        }
+        const prices = plansDoc.data();
+        let amountInRupees = 0;
+        if (planId === 'basic') {
+            amountInRupees = prices.basicPrice || 499;
+        }
+        else if (planId === 'pro') {
+            amountInRupees = prices.proPrice || 3999;
+        }
+        else if (planId === 'enterprise') {
+            const months = parseInt(enterpriseMonths) || 1;
+            const monthlyPrice = prices.enterpriseMonthlyPrice || 399;
+            amountInRupees = months * monthlyPrice;
+        }
+        // Convert to paise (₹1 = 100 paise)
+        const amountInPaise = Math.round(amountInRupees * 100);
+        logger.info(`Creating Razorpay order for plan: ${planId}, amount: ₹${amountInRupees}`);
+        // Initialize Razorpay
+        const key_id = process.env.RAZORPAY_KEY_ID;
+        const key_secret = process.env.RAZORPAY_KEY_SECRET;
+        if (!key_id || !key_secret) {
+            logger.error("Razorpay API Keys missing from environment");
+            throw new https_1.HttpsError('internal', 'Payment gateway misconfigured');
+        }
+        const instance = new razorpay_1.default({ key_id, key_secret });
+        const options = {
+            amount: amountInPaise,
+            currency: "INR",
+            receipt: `re_${request.auth.uid.substring(0, 10)}_${Date.now()}`,
+            notes: {
+                shopUid: request.auth.uid,
+                planId: planId,
+                enterpriseMonths: enterpriseMonths || 0
+            }
+        };
+        const order = await instance.orders.create(options);
+        logger.info(`Successfully created Razorpay order: ${order.id}`);
+        return {
+            orderId: order.id,
+            amount: order.amount,
+            currency: order.currency,
+            keyId: key_id // Send public key to client
+        };
+    }
+    catch (error) {
+        logger.error("Error creating Razorpay order:", error);
+        if (error instanceof https_1.HttpsError) {
+            throw error;
+        }
+        throw new https_1.HttpsError('internal', `Failed to create order: ${error.message}`);
     }
 });
 //# sourceMappingURL=index.js.map

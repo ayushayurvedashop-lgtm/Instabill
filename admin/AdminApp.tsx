@@ -5,11 +5,13 @@ import { collection, getDocs } from 'firebase/firestore';
 import { checkIsSuperAdmin } from '../services/authService';
 import { ShopProfile } from '../types';
 import ShopManagement from './ShopManagement';
+import TrialRequests from './TrialRequests';
 import PlanPricing from './PlanPricing';
 import AdminDashboard from './AdminDashboard';
 import AdminLandingPageManager from './AdminLandingPageManager';
+import DefaultCatalogManager from './DefaultCatalogManager';
 
-type AdminView = 'dashboard' | 'shops' | 'subscriptions' | 'settings' | 'landing_page';
+type AdminView = 'dashboard' | 'shops' | 'trial_requests' | 'subscriptions' | 'catalog' | 'settings' | 'landing_page';
 
 const NAV_ITEMS: { id: AdminView; label: string; icon: React.ReactNode }[] = [
     {
@@ -35,12 +37,36 @@ const NAV_ITEMS: { id: AdminView; label: string; icon: React.ReactNode }[] = [
         ),
     },
     {
+        id: 'trial_requests',
+        label: 'Trial Requests',
+        icon: (
+            <svg width="20" height="20" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                <polyline points="14 2 14 8 20 8" />
+                <line x1="16" y1="13" x2="8" y2="13" />
+                <line x1="16" y1="17" x2="8" y2="17" />
+                <polyline points="10 9 9 9 8 9" />
+            </svg>
+        ),
+    },
+    {
         id: 'subscriptions',
         label: 'Subscriptions',
         icon: (
             <svg width="20" height="20" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
                 <rect x="1" y="4" width="22" height="16" rx="2" ry="2" />
                 <line x1="1" y1="10" x2="23" y2="10" />
+            </svg>
+        ),
+    },
+    {
+        id: 'catalog',
+        label: 'Stock Catalog',
+        icon: (
+            <svg width="20" height="20" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
+                <path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z" />
+                <line x1="3" y1="6" x2="21" y2="6" />
+                <path d="M16 10a4 4 0 0 1-8 0" />
             </svg>
         ),
     },
@@ -173,7 +199,7 @@ const AdminApp: React.FC = () => {
                                 <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16" />
                             </svg>
                         </div>
-                        <h1 className="admin-login__title">Admin Dashboard</h1>
+                        <h1 className="admin-login__title">Instabill Admin</h1>
                         <p className="admin-login__desc">Super admin access only</p>
                     </div>
                     <form className="admin-login__form" onSubmit={handleLogin}>
@@ -218,29 +244,72 @@ const AdminApp: React.FC = () => {
                 return <AdminDashboard shops={shops} />;
             case 'shops':
                 return <ShopManagement shops={shops} setShops={setShops} loading={shopsLoading} />;
+            case 'trial_requests':
+                return <TrialRequests shops={shops} setShops={setShops} loading={shopsLoading} />;
             case 'subscriptions':
-                return <PlanPricing />;
+                return <PlanPricing shops={shops} />;
             case 'landing_page':
                 return <AdminLandingPageManager />;
-            case 'settings':
+            case 'catalog':
+                return <DefaultCatalogManager />;
+            case 'settings': {
+                const activeCount = shops.filter(s => s.subscriptionStatus === 'active').length;
+                const totalCount = shops.length;
                 return (
                     <div className="admin-dashboard">
                         <div className="admin-page-header">
                             <h1>Settings</h1>
-                            <p>Admin configuration and preferences</p>
+                            <p>Admin configuration and system information</p>
                         </div>
-                        <div className="admin-card">
-                            <div className="admin-card__body" style={{ padding: '48px', textAlign: 'center', color: '#94a3b8' }}>
-                                <svg width="48" height="48" fill="none" stroke="currentColor" strokeWidth="1.5" viewBox="0 0 24 24" style={{ margin: '0 auto 16px' }}>
-                                    <circle cx="12" cy="12" r="3" />
-                                    <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
-                                </svg>
-                                <p style={{ fontWeight: 600, fontSize: '15px', marginBottom: '4px' }}>Coming Soon</p>
-                                <p style={{ fontSize: '13px' }}>Admin configuration will be available here.</p>
+
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '20px' }}>
+                            {/* Admin Account */}
+                            <div className="admin-card">
+                                <div className="admin-card__header"><h2>Admin Account</h2></div>
+                                <div className="admin-card__body" style={{ padding: '24px' }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '20px' }}>
+                                        <div style={{ width: '56px', height: '56px', borderRadius: '14px', background: 'var(--admin-primary)', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '22px', fontWeight: 800, flexShrink: 0 }}>IA</div>
+                                        <div>
+                                            <p style={{ fontWeight: 800, fontSize: '16px', color: 'var(--admin-text)' }}>Super Admin</p>
+                                            <p style={{ fontSize: '13px', color: 'var(--admin-text-muted)', marginTop: '2px' }}>{user?.email || 'admin@instabill.app'}</p>
+                                        </div>
+                                    </div>
+                                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                                        <div style={{ padding: '14px', background: 'var(--admin-bg)', borderRadius: '10px' }}>
+                                            <p style={{ fontSize: '11px', fontWeight: 700, color: 'var(--admin-text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Total Shops</p>
+                                            <p style={{ fontSize: '24px', fontWeight: 900, color: 'var(--admin-text)', marginTop: '4px' }}>{totalCount}</p>
+                                        </div>
+                                        <div style={{ padding: '14px', background: 'var(--status-active-bg)', borderRadius: '10px' }}>
+                                            <p style={{ fontSize: '11px', fontWeight: 700, color: 'var(--admin-text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Active</p>
+                                            <p style={{ fontSize: '24px', fontWeight: 900, color: 'var(--status-active-text)', marginTop: '4px' }}>{activeCount}</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* App Information */}
+                            <div className="admin-card">
+                                <div className="admin-card__header"><h2>App Information</h2></div>
+                                <div className="admin-card__body" style={{ padding: '24px' }}>
+                                    {[
+                                        { label: 'App Name', value: 'Instabill' },
+                                        { label: 'Version', value: 'v1.1.0' },
+                                        { label: 'Platform', value: 'Web (PWA)' },
+                                        { label: 'Payment Gateway', value: 'Razorpay' },
+                                        { label: 'Database', value: 'Firebase Firestore' },
+                                        { label: 'Auth', value: 'Firebase Auth' },
+                                    ].map((item, i) => (
+                                        <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 0', borderBottom: i < 5 ? '1px solid var(--admin-border-light)' : 'none' }}>
+                                            <span style={{ fontSize: '13px', fontWeight: 500, color: 'var(--admin-text-secondary)' }}>{item.label}</span>
+                                            <span style={{ fontSize: '13px', fontWeight: 700, color: 'var(--admin-text)' }}>{item.value}</span>
+                                        </div>
+                                    ))}
+                                </div>
                             </div>
                         </div>
                     </div>
                 );
+            }
             default:
                 return null;
         }
@@ -258,22 +327,30 @@ const AdminApp: React.FC = () => {
                         </svg>
                     </div>
                     <div>
-                        <div className="admin-sidebar__brand-name">Veda Admin</div>
+                        <div className="admin-sidebar__brand-name">Instabill Admin</div>
                         <div className="admin-sidebar__brand-role">Super Admin</div>
                     </div>
                 </div>
 
                 <nav className="admin-sidebar__nav">
-                    {NAV_ITEMS.map(item => (
-                        <button
-                            key={item.id}
-                            className={`admin-sidebar__nav-item ${activeView === item.id ? 'admin-sidebar__nav-item--active' : ''}`}
-                            onClick={() => setActiveView(item.id)}
-                        >
-                            <span className="admin-sidebar__nav-icon">{item.icon}</span>
-                            <span>{item.label}</span>
-                        </button>
-                    ))}
+                    {NAV_ITEMS.map(item => {
+                        const pendingCount = item.id === 'trial_requests' ? shops.filter(s => s.trialStatus === 'pending').length : 0;
+                        return (
+                            <button
+                                key={item.id}
+                                className={`admin-sidebar__nav-item ${activeView === item.id ? 'admin-sidebar__nav-item--active' : ''}`}
+                                onClick={() => setActiveView(item.id)}
+                            >
+                                <span className="admin-sidebar__nav-icon">{item.icon}</span>
+                                <span>{item.label}</span>
+                                {item.id === 'trial_requests' && pendingCount > 0 && (
+                                    <span style={{ marginLeft: 'auto', background: '#EF4444', color: 'white', fontSize: '11px', fontWeight: 800, padding: '2px 8px', borderRadius: '10px' }}>
+                                        {pendingCount}
+                                    </span>
+                                )}
+                            </button>
+                        );
+                    })}
                 </nav>
 
                 <div className="admin-sidebar__footer">

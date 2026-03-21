@@ -3,9 +3,9 @@ import { Search, Plus, BrainCircuit, AlertTriangle, MoreHorizontal, Package, Pen
 import { store } from '../store';
 import { Product, SmartAlertItem } from '../types';
 import { ReceiptScanModal } from './ReceiptScanModal';
-import { ASCLEPIUS_CATALOG } from '../asclepiusData';
 import { storage } from '../firebaseConfig';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { useBackButton } from '../hooks/useBackButton';
 
 const Inventory: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
@@ -17,6 +17,10 @@ const Inventory: React.FC = () => {
   // Modal States
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isReceiptScanOpen, setIsReceiptScanOpen] = useState(false);
+
+  // Back button: close modals
+  useBackButton(isModalOpen, () => { setIsModalOpen(false); setEditingProduct(null); });
+  useBackButton(isReceiptScanOpen, () => setIsReceiptScanOpen(false));
 
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
 

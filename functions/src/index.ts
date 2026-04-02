@@ -60,7 +60,7 @@ export const sendWhatsappNotification = onCall({ cors: true }, async (request) =
         // 1. MSG91 Credentials & Config (set MSG91_AUTH_KEY in Firebase config for production)
         const authKey = process.env.MSG91_AUTH_KEY || "489901AythCbMOfajU6973c03eP1";
         const { destination, billReference, billUrl, totalAmount, totalSp, isUpdate, shopName } = request.data;
-        const actualShopName = shopName || "Ayush Ayurveda";
+        const actualShopName = shopName || "Instabill";
         // Campaign slugs: bill-generated1 for new bills, bill-updated1 for updates
         const campaignSlug = isUpdate ? "bill-updated1" : "bill-generated1";
 
@@ -207,7 +207,7 @@ export const sendProductUpdateNotification = onCall({ cors: true }, async (reque
         const authKey = process.env.MSG91_AUTH_KEY || "489901AythCbMOfajU6973c03eP1";
         const campaignSlug = "pending-products-updated";
         const { destination, billReference, productsGiven, billUrl, shopName } = request.data;
-        const actualShopName = shopName || "Ayush Ayurveda";
+        const actualShopName = shopName || "Instabill";
 
         logger.info("Inputs received:", { destination, billReference, productsGiven, billUrl });
 

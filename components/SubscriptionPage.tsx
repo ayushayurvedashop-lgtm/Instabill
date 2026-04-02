@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { db, functions } from '../firebaseConfig';
-import { doc, getDoc, updateDoc } from 'firebase/firestore';
+import { doc, getDoc, updateDoc, collection, addDoc } from 'firebase/firestore';
 import { httpsCallable } from 'firebase/functions';
-import { ShopProfile, PlanConfig } from '../types';
+import { ShopProfile, PlanConfig, SubscriptionTransaction } from '../types';
 import { Crown, Zap, Building2, Check, ChevronDown, ChevronUp, LogOut } from 'lucide-react';
 
 declare global {
@@ -77,6 +77,11 @@ const SubscriptionPage: React.FC<SubscriptionPageProps> = ({ shopProfile, onSubs
                         const end = new Date(now);
                         end.setMonth(end.getMonth() + durationMonths);
 
+                        // Determine transaction type
+                        const isRenewal = shopProfile.subscriptionStatus === 'active' || shopProfile.subscriptionStatus === 'trial';
+                        const isUpgrade = isRenewal && shopProfile.planId !== planId;
+                        const txType: SubscriptionTransaction['type'] = isUpgrade ? 'upgrade' : isRenewal ? 'renewal' : 'new_subscription';
+
                         const updates: Partial<ShopProfile> = {
                             planId,
                             subscriptionStatus: 'active',
@@ -87,6 +92,25 @@ const SubscriptionPage: React.FC<SubscriptionPageProps> = ({ shopProfile, onSubs
                         };
 
                         await updateDoc(doc(db, 'shops', shopProfile.id), updates);
+
+                        // Save transaction record
+                        try {
+                            const txData: Omit<SubscriptionTransaction, 'id'> = {
+                                shopId: shopProfile.id,
+                                type: txType,
+                                planId,
+                                amount: data.amount / 100, // paise to rupees
+                                durationMonths,
+                                date: now.toISOString(),
+                                razorpayOrderId: data.orderId,
+                                razorpayPaymentId: response.razorpay_payment_id,
+                                periodStart: now.toISOString(),
+                                periodEnd: end.toISOString(),
+                            };
+                            await addDoc(collection(db, 'shops', shopProfile.id, 'subscriptionTransactions'), txData);
+                        } catch (txErr) {
+                            console.error('Failed to save transaction record', txErr);
+                        }
 
                         onSubscribed({
                             ...shopProfile,
@@ -105,7 +129,7 @@ const SubscriptionPage: React.FC<SubscriptionPageProps> = ({ shopProfile, onSubs
                     contact: shopProfile.phone
                 },
                 theme: {
-                    color: "#21776A"
+                    color: "#00747B"
                 },
                 modal: {
                     ondismiss: function() {
@@ -158,7 +182,7 @@ const SubscriptionPage: React.FC<SubscriptionPageProps> = ({ shopProfile, onSubs
     if (loading) {
         return (
             <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#f8faf7' }}>
-                <div className="w-12 h-12 border-4 border-[#21776A] border-t-transparent rounded-full animate-spin" />
+                <div className="w-12 h-12 border-4 border-[#00747B] border-t-transparent rounded-full animate-spin" />
             </div>
         );
     }
@@ -213,14 +237,14 @@ const SubscriptionPage: React.FC<SubscriptionPageProps> = ({ shopProfile, onSubs
                     display: 'inline-flex', alignItems: 'center', gap: '8px',
                     padding: '6px 16px', borderRadius: '24px',
                     background: 'rgba(33, 119, 106, 0.1)',
-                    color: '#21776A', fontSize: '13px', fontWeight: 700,
+                    color: '#00747B', fontSize: '13px', fontWeight: 700,
                     marginBottom: '16px', letterSpacing: '0.5px',
                 }}>
                     <Crown size={14} />
                     {isActive ? 'MANAGE YOUR PLAN' : 'CHOOSE YOUR PLAN'}
                 </div>
                 <h1 style={{
-                    fontSize: '32px', fontWeight: 800, color: '#111617',
+                    fontSize: '32px', fontWeight: 800, color: '#02575c',
                     margin: '0 0 12px', lineHeight: 1.2,
                 }}>
                     {isActive ? 'Your Subscription' : 'Start Your Journey'}
@@ -266,10 +290,10 @@ const SubscriptionPage: React.FC<SubscriptionPageProps> = ({ shopProfile, onSubs
                         }}>
                             <Zap size={24} color="#FF416C" />
                         </div>
-                        <h3 style={{ fontSize: '20px', fontWeight: 800, color: '#111617', margin: '0 0 4px' }}>Free Trial</h3>
-                        <p style={{ fontSize: '13px', color: '#111617', opacity: 0.8, margin: '0 0 20px' }}>Request test access</p>
+                        <h3 style={{ fontSize: '20px', fontWeight: 800, color: '#02575c', margin: '0 0 4px' }}>Free Trial</h3>
+                        <p style={{ fontSize: '13px', color: '#02575c', opacity: 0.8, margin: '0 0 20px' }}>Request test access</p>
                         <div style={{ marginBottom: '24px' }}>
-                            <span style={{ fontSize: '36px', fontWeight: 900, color: '#111617' }}>Free</span>
+                            <span style={{ fontSize: '36px', fontWeight: 900, color: '#02575c' }}>Free</span>
                         </div>
                         <div style={{ flex: 1, marginBottom: '24px' }}>
                             {['7 days duration', 'All Features', 'All Products Catalog', 'Pending Product Manager', 'SP Management', 'Customer Data Manager', 'Payment Tracking', 'Daily Revenue Stats'].map(f => (
@@ -277,7 +301,7 @@ const SubscriptionPage: React.FC<SubscriptionPageProps> = ({ shopProfile, onSubs
                                     <div style={{ width: '20px', height: '20px', borderRadius: '50%', background: 'rgba(255,255,255,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                                         <Check size={12} color="#FF416C" strokeWidth={3} />
                                     </div>
-                                    <span style={{ fontSize: '13px', color: '#111617', fontWeight: 600 }}>{f}</span>
+                                    <span style={{ fontSize: '13px', color: '#02575c', fontWeight: 600 }}>{f}</span>
                                 </div>
                             ))}
                         </div>
@@ -305,7 +329,7 @@ const SubscriptionPage: React.FC<SubscriptionPageProps> = ({ shopProfile, onSubs
                     background: 'white',
                     borderRadius: '20px',
                     padding: '32px 28px',
-                    border: shopProfile.planId === 'basic' && isActive ? '2px solid #21776A' : '1px solid #E5E7EB',
+                    border: shopProfile.planId === 'basic' && isActive ? '2px solid #00747B' : '1px solid #E5E7EB',
                     boxShadow: '0 1px 3px rgba(0,0,0,0.04)',
                     display: 'flex',
                     flexDirection: 'column',
@@ -315,7 +339,7 @@ const SubscriptionPage: React.FC<SubscriptionPageProps> = ({ shopProfile, onSubs
                     {shopProfile.planId === 'basic' && isActive && (
                         <div style={{
                             position: 'absolute', top: '-12px', left: '50%', transform: 'translateX(-50%)',
-                            background: '#21776A', color: 'white', padding: '4px 16px', borderRadius: '12px',
+                            background: '#00747B', color: 'white', padding: '4px 16px', borderRadius: '12px',
                             fontSize: '11px', fontWeight: 700, letterSpacing: '0.5px',
                         }}>CURRENT PLAN</div>
                     )}
@@ -326,10 +350,10 @@ const SubscriptionPage: React.FC<SubscriptionPageProps> = ({ shopProfile, onSubs
                     }}>
                         <Zap size={24} color="#3B82F6" />
                     </div>
-                    <h3 style={{ fontSize: '20px', fontWeight: 800, color: '#111617', margin: '0 0 4px' }}>Basic</h3>
+                    <h3 style={{ fontSize: '20px', fontWeight: 800, color: '#02575c', margin: '0 0 4px' }}>Basic</h3>
                     <p style={{ fontSize: '13px', color: '#9CA3AF', margin: '0 0 20px' }}>Perfect to get started</p>
                     <div style={{ marginBottom: '24px' }}>
-                        <span style={{ fontSize: '36px', fontWeight: 900, color: '#111617' }}>₹{prices.basicPrice.toLocaleString('en-IN')}</span>
+                        <span style={{ fontSize: '36px', fontWeight: 900, color: '#02575c' }}>₹{prices.basicPrice.toLocaleString('en-IN')}</span>
                         <span style={{ fontSize: '14px', color: '#9CA3AF', fontWeight: 500, marginLeft: '4px' }}>/month</span>
                     </div>
                     <div style={{ flex: 1, marginBottom: '24px' }}>
@@ -362,7 +386,7 @@ const SubscriptionPage: React.FC<SubscriptionPageProps> = ({ shopProfile, onSubs
 
                 {/* Pro Plan */}
                 <div style={{
-                    background: 'linear-gradient(135deg, #21776A 0%, #1a5f54 100%)',
+                    background: 'linear-gradient(135deg, #00747B 0%, #1a5f54 100%)',
                     borderRadius: '20px',
                     padding: '32px 28px',
                     border: 'none',
@@ -374,7 +398,7 @@ const SubscriptionPage: React.FC<SubscriptionPageProps> = ({ shopProfile, onSubs
                 }}>
                     <div style={{
                         position: 'absolute', top: '-12px', left: '50%', transform: 'translateX(-50%)',
-                        background: '#88DE7D', color: '#111617', padding: '4px 16px', borderRadius: '12px',
+                        background: '#88DE7D', color: '#02575c', padding: '4px 16px', borderRadius: '12px',
                         fontSize: '11px', fontWeight: 800, letterSpacing: '0.5px',
                     }}>
                         {shopProfile.planId === 'pro' && isActive ? 'CURRENT PLAN' : 'BEST VALUE'}
@@ -408,7 +432,7 @@ const SubscriptionPage: React.FC<SubscriptionPageProps> = ({ shopProfile, onSubs
                         style={{
                             width: '100%', padding: '14px',
                             background: shopProfile.planId === 'pro' && isActive ? 'rgba(255,255,255,0.2)' : '#88DE7D',
-                            color: shopProfile.planId === 'pro' && isActive ? 'rgba(255,255,255,0.5)' : '#111617',
+                            color: shopProfile.planId === 'pro' && isActive ? 'rgba(255,255,255,0.5)' : '#02575c',
                             border: 'none', borderRadius: '12px',
                             fontSize: '14px', fontWeight: 800,
                             cursor: shopProfile.planId === 'pro' && isActive ? 'default' : 'pointer',
@@ -446,12 +470,12 @@ const SubscriptionPage: React.FC<SubscriptionPageProps> = ({ shopProfile, onSubs
                     }}>
                         <Building2 size={24} color="#7C3AED" />
                     </div>
-                    <h3 style={{ fontSize: '20px', fontWeight: 800, color: '#111617', margin: '0 0 4px' }}>Enterprise</h3>
+                    <h3 style={{ fontSize: '20px', fontWeight: 800, color: '#02575c', margin: '0 0 4px' }}>Enterprise</h3>
                     <p style={{ fontSize: '13px', color: '#9CA3AF', margin: '0 0 20px' }}>Flexible custom duration</p>
 
                     {/* Price */}
                     <div style={{ marginBottom: '16px' }}>
-                        <span style={{ fontSize: '36px', fontWeight: 900, color: '#111617' }}>₹{enterpriseTotal.toLocaleString('en-IN')}</span>
+                        <span style={{ fontSize: '36px', fontWeight: 900, color: '#02575c' }}>₹{enterpriseTotal.toLocaleString('en-IN')}</span>
                         <span style={{ fontSize: '14px', color: '#9CA3AF', fontWeight: 500, marginLeft: '4px' }}>
                             / {enterpriseMonths} month{enterpriseMonths > 1 ? 's' : ''}
                         </span>
@@ -489,7 +513,7 @@ const SubscriptionPage: React.FC<SubscriptionPageProps> = ({ shopProfile, onSubs
                                     width: '48px', textAlign: 'center',
                                     border: '1px solid #E5E7EB', borderRadius: '8px',
                                     padding: '6px', fontSize: '16px', fontWeight: 800,
-                                    fontFamily: 'inherit', color: '#111617', outline: 'none',
+                                    fontFamily: 'inherit', color: '#02575c', outline: 'none',
                                 }}
                             />
                             <button
@@ -560,7 +584,7 @@ const SubscriptionPage: React.FC<SubscriptionPageProps> = ({ shopProfile, onSubs
                         background: 'white', borderRadius: '20px', width: '100%', maxWidth: '400px',
                         padding: '32px', boxShadow: '0 10px 40px rgba(0,0,0,0.2)',
                     }}>
-                        <h2 style={{ fontSize: '24px', fontWeight: 800, margin: '0 0 16px', color: '#111617' }}>Request Free Trial</h2>
+                        <h2 style={{ fontSize: '24px', fontWeight: 800, margin: '0 0 16px', color: '#02575c' }}>Request Free Trial</h2>
                         <p style={{ fontSize: '14px', color: '#6B7280', margin: '0 0 24px' }}>Verify your details to request an admin-approved free trial.</p>
                         
                         <form onSubmit={handleRequestTrial}>

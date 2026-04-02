@@ -218,7 +218,7 @@ export const CatalogImportModal: React.FC<CatalogImportModalProps> = ({ onClose 
       <div className="fixed inset-0 bg-dark/50 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-fade-in">
         <div className="bg-white rounded-3xl p-8 w-full max-w-md text-center shadow-xl animate-modal-in">
           <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6">
-            <Check size={40} className="text-green-600" />
+            <Check size={40} className="text-[#5abc8b]" />
           </div>
           <h3 className="text-xl font-bold text-dark mb-2">Import Successful!</h3>
           <p className="text-gray-500 mb-6">Your inventory has been updated with the latest products and prices.</p>
@@ -241,7 +241,7 @@ export const CatalogImportModal: React.FC<CatalogImportModalProps> = ({ onClose 
                 <PackagePlus className="text-primary-600" /> Catalog Import Manager
               </h3>
               <p className="text-sm text-gray-500 mt-1">
-                Found <span className="font-bold text-green-600">{stats.new} New</span> and <span className="font-bold text-orange-500">{stats.update} Updates</span>.
+                Found <span className="font-bold text-[#5abc8b]">{stats.new} New</span> and <span className="font-bold text-orange-500">{stats.update} Updates</span>.
                 <span className="text-gray-400 ml-1">({stats.same} items up to date)</span>
               </p>
             </div>
@@ -301,7 +301,7 @@ export const CatalogImportModal: React.FC<CatalogImportModalProps> = ({ onClose 
                       <div className="flex items-center gap-2 mb-1">
                         <h4 className="font-bold text-dark">{item.name}</h4>
                         {item.status === 'new' ? (
-                          <span className="text-[10px] font-bold bg-green-100 text-green-700 px-2 py-0.5 rounded-full">NEW</span>
+                          <span className="text-[10px] font-bold bg-green-100 text-[#5abc8b] px-2 py-0.5 rounded-full">NEW</span>
                         ) : (
                           <span className="text-[10px] font-bold bg-orange-100 text-orange-700 px-2 py-0.5 rounded-full">UPDATE</span>
                         )}

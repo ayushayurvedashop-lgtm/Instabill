@@ -244,7 +244,7 @@ const ProductHandoverModal: React.FC<ProductHandoverModalProps> = ({ bill, onClo
                                                 {item.name}
                                             </h3>
                                             {isFullyGiven ? (
-                                                <span className="flex items-center gap-1 text-[9px] font-bold text-green-600 bg-green-50 px-1.5 py-0.5 rounded-full uppercase shrink-0">
+                                                <span className="flex items-center gap-1 text-[9px] font-bold text-[#5abc8b] bg-green-50 px-1.5 py-0.5 rounded-full uppercase shrink-0">
                                                     <CheckCircle2 size={10} strokeWidth={3} /> Done
                                                 </span>
                                             ) : (

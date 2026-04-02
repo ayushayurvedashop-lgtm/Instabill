@@ -9,7 +9,7 @@ const CreateBillButton: React.FC<CreateBillButtonProps> = ({ onClick, className 
     return (
         <button
             onClick={onClick}
-            className={`group relative flex items-center justify-center rounded-xl bg-[#88DE7D] hover:bg-[#7cd472] text-[#111617] text-sm font-bold px-5 py-2 overflow-hidden transition-all duration-200 cursor-pointer active:scale-95 shadow-[0_0_20px_rgba(136,222,125,0.3)] hover:shadow-[0_0_30px_rgba(136,222,125,0.5)] min-w-[160px] ${className}`}
+            className={`group relative flex items-center justify-center rounded-xl bg-[#88DE7D] hover:bg-[#7cd472] text-[#02575c] text-sm font-bold px-5 py-2 overflow-hidden transition-all duration-200 cursor-pointer active:scale-95 shadow-[0_0_20px_rgba(136,222,125,0.3)] hover:shadow-[0_0_30px_rgba(136,222,125,0.5)] min-w-[160px] ${className}`}
         >
             {/* Icon - moves to center on hover */}
             <svg

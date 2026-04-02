@@ -162,3 +162,17 @@ export interface PlanConfig {
   extendProPrice: number;      // e.g. 2999 (+12 months extension)
   extendCustomMonthlyPrice: number; // e.g. 349 per month extension
 }
+
+export interface SubscriptionTransaction {
+  id: string;
+  shopId: string;
+  type: 'new_subscription' | 'renewal' | 'extension' | 'upgrade';
+  planId: string;
+  amount: number;
+  durationMonths: number;
+  date: string;              // ISO date string
+  razorpayOrderId?: string;
+  razorpayPaymentId?: string;
+  periodStart: string;       // subscription period start (ISO)
+  periodEnd: string;         // subscription period end (ISO)
+}

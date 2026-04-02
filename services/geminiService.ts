@@ -1,10 +1,10 @@
 
 import { Product } from '../types';
 
-// Gemini API Key - Move to .env.local in production
-const GEMINI_API_KEY = 'AIzaSyBlCOYAySJa3uGCMrRSnIpkFflpuQ9qJUg';
+// Gemini API Key - loaded from .env (VITE_GEMINI_API_KEY)
+const GEMINI_API_KEY = import.meta.env.VITE_GEMINI_API_KEY || '';
 
-const GEMINI_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}`;
+const GEMINI_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}`;
 
 interface GeminiResponse {
     candidates: {
@@ -101,3 +101,79 @@ JSON Output:`;
         }
     }
 };
+
+export interface ReceiptDetectedItem {
+    name: string;
+    quantity: number;
+    matchedInventoryName?: string;
+}
+
+export async function analyzeReceipt(base64Image: string, inventoryProductNames: string[]): Promise<ReceiptDetectedItem[]> {
+    const base64Data = base64Image.replace(/^data:image\/[a-z]+;base64,/, '');
+    const mimeMatch = base64Image.match(/^data:(image\/[a-z]+);base64,/);
+    const mimeType = mimeMatch ? mimeMatch[1] : 'image/jpeg';
+
+    const prompt = `You are a stock receipt scanner for an Ayurvedic / general store.
+Analyze this receipt image and extract ALL product names and their quantities.
+
+Here is the store's product inventory for matching:
+${inventoryProductNames.slice(0, 200).join('\n')}
+
+INSTRUCTIONS:
+1. Extract every product line from the receipt - look for product names and quantities.
+2. For each detected product, try to match it to the closest inventory product name above.
+3. If a quantity column exists, use that. Otherwise default to 1.
+4. Be thorough - do NOT skip any products. Scan every row of the receipt.
+5. Product names on receipts may be abbreviated or truncated - match as best you can.
+
+Return ONLY a valid JSON array:
+[{"name": "detected product name from receipt", "quantity": 5, "matchedInventoryName": "closest inventory match or null"}, ...]
+
+If you cannot detect any products, return empty array: []
+JSON Output:`;
+
+    const response = await fetch(GEMINI_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            contents: [{
+                parts: [
+                    {
+                        inlineData: {
+                            mimeType,
+                            data: base64Data
+                        }
+                    },
+                    { text: prompt }
+                ]
+            }],
+            generationConfig: {
+                temperature: 0.05,
+                maxOutputTokens: 4096
+            }
+        })
+    });
+
+    if (!response.ok) {
+        const errText = await response.text();
+        console.error('Gemini Receipt API error:', response.status, errText);
+        throw new Error(`Gemini API Error: ${response.status} - ${response.statusText}`);
+    }
+
+    const data: GeminiResponse = await response.json();
+    const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
+
+    if (!text) return [];
+
+    const jsonStr = text.replace(/```json|```/g, '').trim();
+    const items: ReceiptDetectedItem[] = JSON.parse(jsonStr);
+
+    // Validate
+    return items
+        .map(item => ({
+            name: item.name?.trim() || '',
+            quantity: (typeof item.quantity === 'number' && item.quantity > 0) ? item.quantity : 1,
+            matchedInventoryName: item.matchedInventoryName || undefined
+        }))
+        .filter(item => item.name.length >= 2);
+}

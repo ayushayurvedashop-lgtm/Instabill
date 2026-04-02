@@ -163,7 +163,7 @@ export default function LandingPage({ onLogin }: LandingPageProps) {
   };
 
   return (
-    <div className="min-h-screen font-sans text-[#111617] bg-[#f9fbf8] selection:bg-[#daf4d7]">
+    <div className="min-h-screen font-sans text-[#02575c] bg-[#f9fbf8] selection:bg-[#daf4d7]">
 
       {/* Background Grid Pattern */}
       <div className="fixed inset-0 pointer-events-none z-0 opacity-40 bg-[linear-gradient(to_right,#e5e7eb_1px,transparent_1px),linear-gradient(to_bottom,#e5e7eb_1px,transparent_1px)] bg-[size:4rem_4rem]"></div>
@@ -173,21 +173,21 @@ export default function LandingPage({ onLogin }: LandingPageProps) {
         <div className="container mx-auto px-6 h-20 flex items-center justify-between">
           <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} className="flex items-center gap-2">
             <img src="/Logo-Icon.png" alt="Instabill" className="h-8 object-contain" />
-            <span className="text-xl font-heading font-bold text-[#111617] tracking-tight">Instabill</span>
+            <span className="text-xl font-heading font-bold text-[#02575c] tracking-tight">Instabill</span>
           </motion.div>
 
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="hidden md:flex items-center gap-8">
-            <a href="#" className="text-sm font-medium text-gray-500 hover:text-[#111617] transition-colors">Features</a>
-            <a href="#" className="text-sm font-medium text-gray-500 hover:text-[#111617] transition-colors">Why Us</a>
-            <a href="#" className="text-sm font-medium text-gray-500 hover:text-[#111617] transition-colors">Pricing</a>
-            <a href="#" className="text-sm font-medium text-gray-500 hover:text-[#111617] transition-colors">Contact</a>
+            <a href="#" className="text-sm font-medium text-gray-500 hover:text-[#02575c] transition-colors">Features</a>
+            <a href="#" className="text-sm font-medium text-gray-500 hover:text-[#02575c] transition-colors">Why Us</a>
+            <a href="#" className="text-sm font-medium text-gray-500 hover:text-[#02575c] transition-colors">Pricing</a>
+            <a href="#" className="text-sm font-medium text-gray-500 hover:text-[#02575c] transition-colors">Contact</a>
           </motion.div>
 
           <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} className="flex items-center gap-4">
-            <button onClick={() => setActiveModal('login')} className="text-sm font-semibold text-[#111617] hover:text-[#21776a] transition-colors px-4 py-2">
+            <button onClick={() => setActiveModal('login')} className="text-sm font-semibold text-[#02575c] hover:text-[#00747B] transition-colors px-4 py-2">
               Login
             </button>
-            <button onClick={() => setActiveModal('register')} className="bg-[#21776a] hover:bg-[#1a5f54] text-white text-sm font-bold px-6 py-2.5 rounded-lg transition-all shadow-[0_2px_10px_rgba(33,119,106,0.2)]">
+            <button onClick={() => setActiveModal('register')} className="bg-[#00747B] hover:bg-[#1a5f54] text-white text-sm font-bold px-6 py-2.5 rounded-lg transition-all shadow-[0_2px_10px_rgba(33,119,106,0.2)]">
               Get Started
             </button>
           </motion.div>
@@ -198,13 +198,13 @@ export default function LandingPage({ onLogin }: LandingPageProps) {
 
         {/* Hero Section */}
         <section className="container mx-auto px-6 text-center mb-24">
-          <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: 0.5 }} className="inline-flex items-center gap-2 px-4 py-1.5 bg-[#daf4d7] text-[#21776a] rounded-full text-xs font-bold tracking-wide mb-8 shadow-sm">
+          <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: 0.5 }} className="inline-flex items-center gap-2 px-4 py-1.5 bg-[#daf4d7] text-[#00747B] rounded-full text-xs font-bold tracking-wide mb-8 shadow-sm">
             <Store size={14} /> {config.heroBadge}
           </motion.div>
 
           <motion.h1 initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6, delay: 0.1 }} className="text-4xl md:text-5xl lg:text-6xl font-heading font-bold leading-[1.1] max-w-4xl mx-auto mb-6 tracking-tight">
             {config.heroTitle.split('\n').map((line, i) => (
-              <span key={i} className={i === 0 ? "block text-transparent bg-clip-text bg-gradient-to-r from-[#21776a] to-[#88de7d]" : "block text-[#111617]"}>
+              <span key={i} className={i === 0 ? "block text-transparent bg-clip-text bg-gradient-to-r from-[#00747B] to-[#88de7d]" : "block text-[#02575c]"}>
                 {line}
               </span>
             ))}
@@ -215,10 +215,10 @@ export default function LandingPage({ onLogin }: LandingPageProps) {
           </motion.p>
 
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6, delay: 0.3 }} className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-20">
-            <button onClick={() => setActiveModal('register')} className="w-full sm:w-auto bg-[#21776a] hover:bg-[#1a5f54] text-white px-8 py-3.5 rounded-md font-bold text-base transition-all shadow-[0_4px_14px_rgba(33,119,106,0.3)] hover:-translate-y-0.5">
+            <button onClick={() => setActiveModal('register')} className="w-full sm:w-auto bg-[#00747B] hover:bg-[#1a5f54] text-white px-8 py-3.5 rounded-md font-bold text-base transition-all shadow-[0_4px_14px_rgba(33,119,106,0.3)] hover:-translate-y-0.5">
               Get Started
             </button>
-            <button onClick={() => { if (config.heroVideoUrl) setActiveModal('video'); }} className="w-full sm:w-auto bg-transparent border border-[#21776a] text-[#21776a] hover:bg-[#21776a]/5 px-8 py-3.5 rounded-md font-bold text-base transition-all">
+            <button onClick={() => { if (config.heroVideoUrl) setActiveModal('video'); }} className="w-full sm:w-auto bg-transparent border border-[#00747B] text-[#00747B] hover:bg-[#00747B]/5 px-8 py-3.5 rounded-md font-bold text-base transition-all">
               Watch Demo
             </button>
           </motion.div>
@@ -235,7 +235,7 @@ export default function LandingPage({ onLogin }: LandingPageProps) {
                     <div className="w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-full bg-green-400"></div>
                   </div>
                   {/* Media Container */}
-                  <div className="relative w-full aspect-[4/3] md:aspect-video bg-[#111617] flex items-center justify-center cursor-pointer group" onClick={() => setActiveModal('video')}>
+                  <div className="relative w-full aspect-[4/3] md:aspect-video bg-[#02575c] flex items-center justify-center cursor-pointer group" onClick={() => setActiveModal('video')}>
                     {/* Play Button Overlay */}
                     <div className="absolute inset-0 bg-black/10 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity z-20">
                       <div className="w-16 h-16 rounded-full bg-white/20 backdrop-blur-md flex items-center justify-center shadow-lg">
@@ -246,7 +246,7 @@ export default function LandingPage({ onLogin }: LandingPageProps) {
                     {config.heroVideoUrl.includes('youtube') || config.heroVideoUrl.includes('vimeo') ? (
                       <iframe src={getEmbedUrl(config.heroVideoUrl)} allow="autoplay; fullscreen; picture-in-picture" className="w-full h-full bg-transparent border-none outline-none relative z-10 pointer-events-none" />
                     ) : (
-                      <video src={config.heroVideoUrl} autoPlay loop muted playsInline className="w-full h-full object-contain bg-[#111617] border-none outline-none relative z-10" />
+                      <video src={config.heroVideoUrl} autoPlay loop muted playsInline className="w-full h-full object-contain bg-[#02575c] border-none outline-none relative z-10" />
                     )}
                   </div>
                 </div>
@@ -271,16 +271,16 @@ export default function LandingPage({ onLogin }: LandingPageProps) {
                 className="bg-white rounded-3xl p-8 shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-gray-100/50 flex flex-col relative overflow-hidden group"
               >
                 {/* Subtle gradient background based on index */}
-                <div className={`absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500 rounded-3xl bg-gradient-to-br ${idx === 0 ? 'from-[#daf4d7]/40 to-transparent' : idx === 1 ? 'from-green-50 to-transparent' : 'from-emerald-50 to-transparent'}`}></div>
+                <div className={`absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500 rounded-3xl bg-gradient-to-br ${idx === 0 ? 'from-[#daf4d7]/40 to-transparent' : idx === 1 ? 'from-green-50 to-transparent' : 'from-[#e7faff] to-transparent'}`}></div>
 
                 <div className="relative z-10 flex-1">
-                  <div className="w-12 h-12 bg-[#daf4d7] rounded-xl flex items-center justify-center text-[#21776a] mb-6 shadow-sm">
+                  <div className="w-12 h-12 bg-[#daf4d7] rounded-xl flex items-center justify-center text-[#00747B] mb-6 shadow-sm">
                     <DynamicIcon name={feature.iconType} className="w-6 h-6" />
                   </div>
-                  <h3 className="text-xl font-bold text-[#111617] mb-3">{feature.title}</h3>
+                  <h3 className="text-xl font-bold text-[#02575c] mb-3">{feature.title}</h3>
                   <p className="text-gray-500 text-sm leading-relaxed mb-6 font-medium">{feature.description}</p>
                 </div>
-                <a href="#" className="relative z-10 text-[#21776a] text-sm font-bold flex items-center gap-1 hover:gap-2 transition-all">
+                <a href="#" className="relative z-10 text-[#00747B] text-sm font-bold flex items-center gap-1 hover:gap-2 transition-all">
                   {feature.linkText}
                 </a>
               </motion.div>
@@ -295,7 +295,7 @@ export default function LandingPage({ onLogin }: LandingPageProps) {
 
           <div className="container mx-auto px-6 relative z-10">
             <div className="text-center mb-20">
-              <motion.h2 initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} className="text-3xl lg:text-5xl font-heading font-bold text-[#111617] leading-tight mb-4">
+              <motion.h2 initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} className="text-3xl lg:text-5xl font-heading font-bold text-[#02575c] leading-tight mb-4">
                 {config.whyChooseTitle}
               </motion.h2>
               <motion.p initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: 0.1 }} className="text-gray-500 text-lg md:text-xl max-w-3xl mx-auto font-medium">
@@ -316,10 +316,10 @@ export default function LandingPage({ onLogin }: LandingPageProps) {
                         viewport={{ once: true }}
                         transition={{ duration: 0.6 }}
                       >
-                        <div className="w-14 h-14 rounded-2xl bg-[#daf4d7] flex items-center justify-center text-[#21776a] mb-8 shadow-sm">
+                        <div className="w-14 h-14 rounded-2xl bg-[#daf4d7] flex items-center justify-center text-[#00747B] mb-8 shadow-sm">
                           <DynamicIcon name={feat.iconType} className="w-7 h-7" />
                         </div>
-                        <h3 className="text-3xl md:text-4xl font-heading font-bold mb-6 text-transparent bg-clip-text bg-gradient-to-r from-[#21776a] to-[#88de7d]">
+                        <h3 className="text-3xl md:text-4xl font-heading font-bold mb-6 text-transparent bg-clip-text bg-gradient-to-r from-[#00747B] to-[#88de7d]">
                           {feat.title}
                         </h3>
                         <p className="text-gray-500 text-lg leading-relaxed font-medium">
@@ -357,14 +357,14 @@ export default function LandingPage({ onLogin }: LandingPageProps) {
         <section className="py-24 bg-[#f9fbf8] border-t border-gray-100">
           <div className="container mx-auto px-6 text-center">
             <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }}>
-              <h2 className="text-3xl md:text-4xl font-heading font-bold text-[#111617] mb-4 tracking-tight">
+              <h2 className="text-3xl md:text-4xl font-heading font-bold text-[#02575c] mb-4 tracking-tight">
                 {config.ctaTitle}
               </h2>
               <p className="text-gray-500 max-w-xl mx-auto mb-10">
                 {config.ctaDescription}
               </p>
               <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-                <button onClick={() => setActiveModal('register')} className="w-full sm:w-auto bg-[#21776a] hover:bg-[#1a5f54] text-white px-8 py-3.5 rounded-md font-bold text-sm transition-all shadow-md shadow-[#21776a]/20">
+                <button onClick={() => setActiveModal('register')} className="w-full sm:w-auto bg-[#00747B] hover:bg-[#1a5f54] text-white px-8 py-3.5 rounded-md font-bold text-sm transition-all shadow-md shadow-[#00747B]/20">
                   Get Started for Free
                 </button>
                 <button onClick={() => { if (config.heroVideoUrl) setActiveModal('video'); }} className="w-full sm:w-auto bg-transparent border border-gray-300 text-gray-700 hover:border-gray-400 px-8 py-3.5 rounded-md font-bold text-sm transition-all">
@@ -384,21 +384,21 @@ export default function LandingPage({ onLogin }: LandingPageProps) {
             <div className="flex flex-col gap-4">
               <div className="flex items-center gap-2">
                 <img src="/Logo-Icon.png" alt="Instabill" className="h-6 object-contain grayscale opacity-80" />
-                <span className="font-heading font-bold text-[#111617] text-lg">Instabill</span>
+                <span className="font-heading font-bold text-[#02575c] text-lg">Instabill</span>
               </div>
               <p className="text-sm text-gray-500 max-w-xs leading-relaxed">Modern billing and management platform for Ayurveda franchises.</p>
             </div>
 
             <div className="flex flex-col gap-3">
-              <h4 className="text-sm font-bold text-[#111617] uppercase tracking-wider mb-1">Support</h4>
+              <h4 className="text-sm font-bold text-[#02575c] uppercase tracking-wider mb-1">Support</h4>
               {config.supportPhone && (
-                <a href={`tel:${config.supportPhone.replace(/\s+/g, '')}`} className="flex items-center gap-2 text-sm text-gray-600 hover:text-[#21776a] transition-colors font-medium">
+                <a href={`tel:${config.supportPhone.replace(/\s+/g, '')}`} className="flex items-center gap-2 text-sm text-gray-600 hover:text-[#00747B] transition-colors font-medium">
                   <Smartphone size={16} className="text-[#88de7d]" />
                   {config.supportPhone}
                 </a>
               )}
               {config.supportEmail && (
-                <a href={`mailto:${config.supportEmail}`} className="flex items-center gap-2 text-sm text-gray-600 hover:text-[#21776a] transition-colors font-medium">
+                <a href={`mailto:${config.supportEmail}`} className="flex items-center gap-2 text-sm text-gray-600 hover:text-[#00747B] transition-colors font-medium">
                   <DynamicIcon name="mail" className="w-4 h-4 text-[#88de7d]" />
                   {config.supportEmail}
                 </a>
@@ -411,7 +411,7 @@ export default function LandingPage({ onLogin }: LandingPageProps) {
       {/* Modals from original */}
       <AnimatePresence>
         {activeModal === 'video' && (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 bg-[#111617]/90 backdrop-blur-xl z-[100] flex items-center justify-center p-4 sm:p-8">
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 bg-[#02575c]/90 backdrop-blur-xl z-[100] flex items-center justify-center p-4 sm:p-8">
             <button onClick={() => setActiveModal('none')} className="absolute top-4 right-4 sm:top-8 sm:right-8 text-white/50 hover:text-white p-3 hover:bg-white/10 rounded-full transition-colors z-[110]">
               <X size={32} />
             </button>
@@ -427,21 +427,21 @@ export default function LandingPage({ onLogin }: LandingPageProps) {
 
         {/* Same login/register modals, unchanged logic, just matching new aesthetic mostly intact. */}
         {activeModal === 'login' && (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 bg-[#111617]/40 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 bg-[#02575c]/40 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
             {/* Same login body as before, simplified slightly */}
             <motion.div initial={{ scale: 0.95, y: 20 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.95, y: 20 }} className="bg-white rounded-2xl w-full max-w-sm shadow-2xl overflow-hidden border border-gray-100 p-8 relative">
-              <button onClick={() => setActiveModal('none')} className="absolute top-4 right-4 text-gray-400 hover:text-[#111617] p-2 hover:bg-gray-50 rounded-full"><X size={20} /></button>
+              <button onClick={() => setActiveModal('none')} className="absolute top-4 right-4 text-gray-400 hover:text-[#02575c] p-2 hover:bg-gray-50 rounded-full"><X size={20} /></button>
               <h3 className="text-2xl font-bold font-heading text-center mb-6">Login</h3>
               <form onSubmit={handleLogin} className="space-y-4">
                 <div>
                   <label className="block text-xs font-bold text-gray-500 mb-1">Phone Number</label>
-                  <input type="text" value={adminPhone} onChange={e => setAdminPhone(e.target.value)} className="w-full bg-gray-50 border border-gray-200 rounded-lg py-2.5 px-4 focus:ring-2 focus:ring-[#21776a] outline-none" placeholder="Enter phone" />
+                  <input type="text" value={adminPhone} onChange={e => setAdminPhone(e.target.value)} className="w-full bg-gray-50 border border-gray-200 rounded-lg py-2.5 px-4 focus:ring-2 focus:ring-[#00747B] outline-none" placeholder="Enter phone" />
                 </div>
                 <div>
                   <label className="block text-xs font-bold text-gray-500 mb-1">Password</label>
-                  <input type="password" value={password} onChange={e => setPassword(e.target.value)} className="w-full bg-gray-50 border border-gray-200 rounded-lg py-2.5 px-4 focus:ring-2 focus:ring-[#21776a] outline-none" placeholder="••••••••" />
+                  <input type="password" value={password} onChange={e => setPassword(e.target.value)} className="w-full bg-gray-50 border border-gray-200 rounded-lg py-2.5 px-4 focus:ring-2 focus:ring-[#00747B] outline-none" placeholder="••••••••" />
                 </div>
-                <button type="submit" disabled={isLoading} className="w-full bg-[#21776a] text-white py-3 rounded-lg font-bold mt-2 disabled:opacity-50">
+                <button type="submit" disabled={isLoading} className="w-full bg-[#00747B] text-white py-3 rounded-lg font-bold mt-2 disabled:opacity-50">
                   {isLoading ? <Loader2 className="animate-spin mx-auto" /> : 'Login'}
                 </button>
                 {error && <p className="text-red-500 text-xs text-center font-medium mt-2">{error}</p>}
@@ -451,23 +451,23 @@ export default function LandingPage({ onLogin }: LandingPageProps) {
         )}
 
         {activeModal === 'register' && (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 bg-[#111617]/40 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 bg-[#02575c]/40 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
             <motion.div initial={{ scale: 0.95, y: 20 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.95, y: 20 }} className="bg-white rounded-2xl w-full max-w-md shadow-2xl overflow-hidden border border-gray-100 p-8 relative max-h-[90vh] overflow-y-auto">
-              <button onClick={() => setActiveModal('none')} className="absolute top-4 right-4 text-gray-400 hover:text-[#111617] p-2 hover:bg-gray-50 rounded-full"><X size={20} /></button>
+              <button onClick={() => setActiveModal('none')} className="absolute top-4 right-4 text-gray-400 hover:text-[#02575c] p-2 hover:bg-gray-50 rounded-full"><X size={20} /></button>
               <h3 className="text-2xl font-bold font-heading text-center mb-6">Register Shop</h3>
               <form onSubmit={handleRegister} className="space-y-4">
-                <div><label className="block text-xs font-bold text-gray-500 mb-1">Shop Name</label><input type="text" value={regShopName} onChange={e => setRegShopName(e.target.value)} className="w-full bg-gray-50 border border-gray-200 rounded-lg py-2.5 px-4 focus:ring-2 focus:ring-[#21776a] outline-none" /></div>
-                <div><label className="block text-xs font-bold text-gray-500 mb-1">Address</label><input type="text" value={regAddress} onChange={e => setRegAddress(e.target.value)} className="w-full bg-gray-50 border border-gray-200 rounded-lg py-2.5 px-4 focus:ring-2 focus:ring-[#21776a] outline-none" /></div>
-                <div><label className="block text-xs font-bold text-gray-500 mb-1">Phone</label><input type="text" value={regPhone} onChange={e => setRegPhone(e.target.value.replace(/\D/g, ''))} className="w-full bg-gray-50 border border-gray-200 rounded-lg py-2.5 px-4 focus:ring-2 focus:ring-[#21776a] outline-none" /></div>
-                <div><label className="block text-xs font-bold text-gray-500 mb-1">Password</label><input type="password" value={regPassword} onChange={e => setRegPassword(e.target.value)} className="w-full bg-gray-50 border border-gray-200 rounded-lg py-2.5 px-4 focus:ring-2 focus:ring-[#21776a] outline-none" /></div>
-                <div><label className="block text-xs font-bold text-gray-500 mb-1">Confirm Password</label><input type="password" value={regConfirmPassword} onChange={e => setRegConfirmPassword(e.target.value)} className="w-full bg-gray-50 border border-gray-200 rounded-lg py-2.5 px-4 focus:ring-2 focus:ring-[#21776a] outline-none" /></div>
+                <div><label className="block text-xs font-bold text-gray-500 mb-1">Shop Name</label><input type="text" value={regShopName} onChange={e => setRegShopName(e.target.value)} className="w-full bg-gray-50 border border-gray-200 rounded-lg py-2.5 px-4 focus:ring-2 focus:ring-[#00747B] outline-none" /></div>
+                <div><label className="block text-xs font-bold text-gray-500 mb-1">Address</label><input type="text" value={regAddress} onChange={e => setRegAddress(e.target.value)} className="w-full bg-gray-50 border border-gray-200 rounded-lg py-2.5 px-4 focus:ring-2 focus:ring-[#00747B] outline-none" /></div>
+                <div><label className="block text-xs font-bold text-gray-500 mb-1">Phone</label><input type="text" value={regPhone} onChange={e => setRegPhone(e.target.value.replace(/\D/g, ''))} className="w-full bg-gray-50 border border-gray-200 rounded-lg py-2.5 px-4 focus:ring-2 focus:ring-[#00747B] outline-none" /></div>
+                <div><label className="block text-xs font-bold text-gray-500 mb-1">Password</label><input type="password" value={regPassword} onChange={e => setRegPassword(e.target.value)} className="w-full bg-gray-50 border border-gray-200 rounded-lg py-2.5 px-4 focus:ring-2 focus:ring-[#00747B] outline-none" /></div>
+                <div><label className="block text-xs font-bold text-gray-500 mb-1">Confirm Password</label><input type="password" value={regConfirmPassword} onChange={e => setRegConfirmPassword(e.target.value)} className="w-full bg-gray-50 border border-gray-200 rounded-lg py-2.5 px-4 focus:ring-2 focus:ring-[#00747B] outline-none" /></div>
                 <div className="flex items-start gap-2 mt-2">
-                  <input type="checkbox" id="regTerms" checked={regAcceptedTerms} onChange={e => setRegAcceptedTerms(e.target.checked)} className="mt-1 accent-[#21776a]" />
+                  <input type="checkbox" id="regTerms" checked={regAcceptedTerms} onChange={e => setRegAcceptedTerms(e.target.checked)} className="mt-1 accent-[#00747B]" />
                   <label htmlFor="regTerms" className="text-xs text-gray-500 leading-tight">
-                    I accept the <a href="/?terms=true" target="_blank" className="text-[#21776a] hover:underline">Terms and Conditions</a>, <a href="/?privacy=true" target="_blank" className="text-[#21776a] hover:underline">Privacy Policy</a>, and <a href="/?refund=true" target="_blank" className="text-[#21776a] hover:underline">Refund Policy</a>.
+                    I accept the <a href="/?terms=true" target="_blank" className="text-[#00747B] hover:underline">Terms and Conditions</a>, <a href="/?privacy=true" target="_blank" className="text-[#00747B] hover:underline">Privacy Policy</a>, and <a href="/?refund=true" target="_blank" className="text-[#00747B] hover:underline">Refund Policy</a>.
                   </label>
                 </div>
-                <button type="submit" disabled={regLoading || !regAcceptedTerms} className="w-full bg-[#21776a] text-white py-3 rounded-lg font-bold mt-4 disabled:opacity-50 transition-opacity">
+                <button type="submit" disabled={regLoading || !regAcceptedTerms} className="w-full bg-[#00747B] text-white py-3 rounded-lg font-bold mt-4 disabled:opacity-50 transition-opacity">
                   {regLoading ? <Loader2 className="animate-spin mx-auto" /> : 'Register'}
                 </button>
                 {regError && <p className="text-red-500 text-xs text-center font-medium mt-2">{regError}</p>}

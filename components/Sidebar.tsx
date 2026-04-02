@@ -61,7 +61,7 @@ const Sidebar: React.FC<SidebarProps> = ({ activeView, setActiveView, onLogout }
   return (
     <>
       {/* Desktop Sidebar - Dark Theme */}
-      <aside className="hidden md:flex w-72 bg-[#111617] flex-col h-full transition-all duration-300 z-20 border-r border-white/5">
+      <aside className="hidden md:flex w-72 bg-[#013a3e] flex-col h-full transition-all duration-300 z-20 border-r border-white/5">
         {/* Logo */}
         <div className="h-28 flex items-center px-8">
           <img src="/Logo (White).png" alt="Instabill" className="h-10 object-contain transform transition-transform hover:scale-105 duration-300" />
@@ -113,7 +113,7 @@ const Sidebar: React.FC<SidebarProps> = ({ activeView, setActiveView, onLogout }
               <div className="w-11 h-11 rounded-[14px] overflow-hidden border border-white/10 group-hover/profile:border-[#88de7d]/40 transition-colors duration-300 bg-[#88de7d]/10 flex items-center justify-center text-[#88de7d]">
                 <User size={22} strokeWidth={2.5} />
               </div>
-              <div className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 bg-[#88de7d] border-2 border-[#111617] rounded-full shadow-[0_0_8px_rgba(136,222,125,0.4)]" />
+              <div className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 bg-[#88de7d] border-2 border-[#013a3e] rounded-full shadow-[0_0_8px_rgba(136,222,125,0.4)]" />
             </div>
 
             {/* User Info */}
@@ -144,7 +144,7 @@ const Sidebar: React.FC<SidebarProps> = ({ activeView, setActiveView, onLogout }
               items={menuItems.map(item => item.id === 'billing' ? { ...item, icon: Plus } : item)}
               activeItem={activeView}
               onItemSelect={(id) => setActiveView(id)}
-              accentColor="#111617"
+              accentColor="#02575c"
             />
           </div>
         </div>

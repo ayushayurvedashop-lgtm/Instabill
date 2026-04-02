@@ -136,7 +136,7 @@ const PaymentManager: React.FC<PaymentManagerProps> = ({ bill, onClose, onUpdate
                         </button>
                         <button
                             onClick={() => setIsPaid(true)}
-                            className={`flex-1 py-3 text-sm font-bold relative z-10 transition-colors ${isPaid ? 'text-green-600' : 'text-gray-500 hover:text-gray-700'}`}
+                            className={`flex-1 py-3 text-sm font-bold relative z-10 transition-colors ${isPaid ? 'text-[#5abc8b]' : 'text-gray-500 hover:text-gray-700'}`}
                         >
                             Paid
                         </button>
@@ -186,7 +186,7 @@ const PaymentManager: React.FC<PaymentManagerProps> = ({ bill, onClose, onUpdate
 
                             {/* Summary / Validation Display */}
                             <div className={`p-3 rounded-lg text-xs font-medium flex justify-between items-center ${(cashAmount + onlineAmount) === bill.totalAmount
-                                ? 'bg-green-50 text-green-700 border border-green-100'
+                                ? 'bg-green-50 text-[#5abc8b] border border-green-100'
                                 : 'bg-red-50 text-red-700 border border-red-100'
                                 }`}>
                                 <span>Total Entered: ₹{cashAmount + onlineAmount}</span>

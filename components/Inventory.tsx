@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Search, Plus, BrainCircuit, AlertTriangle, MoreHorizontal, Package, Pencil, Trash2, X, Save, Download, ChevronDown, Camera, Upload, Filter, Sparkles, TrendingUp, AlertCircle, ShoppingCart, Image as ImageIcon } from 'lucide-react';
+import { Search, Plus, BrainCircuit, AlertTriangle, MoreHorizontal, Package, Pencil, Trash2, X, Save, Download, ChevronDown, Camera, Upload, Filter, Sparkles, TrendingUp, AlertCircle, ShoppingCart, Image as ImageIcon, Check, RotateCcw } from 'lucide-react';
 import { store } from '../store';
 import { Product, SmartAlertItem } from '../types';
 import { ReceiptScanModal } from './ReceiptScanModal';
@@ -200,18 +200,29 @@ const Inventory: React.FC = () => {
     }
   };
 
-  return (
-    <div className="h-full flex flex-col gap-6 relative overflow-hidden w-full">
+  // Zero out all stock
+  const [showZeroOutConfirm, setShowZeroOutConfirm] = useState(false);
 
+  const handleZeroOutStock = async () => {
+    setShowZeroOutConfirm(false);
+    for (const product of products) {
+      if (product.stock !== 0) {
+        await store.updateProduct({ ...product, stock: 0 });
+      }
+    }
+  };
+
+  return (
+    <div className="h-full flex flex-col gap-3 md:gap-4 relative overflow-hidden w-full">
 
       {/* Delete Confirmation Modal */}
       {deleteConfirmId && (
-        <div className="fixed inset-0 bg-dark/20 backdrop-blur-sm z-[150] flex items-center justify-center p-4 animate-fade-in">
+        <div className="fixed inset-0 bg-black/30 backdrop-blur-sm z-[150] flex items-center justify-center p-4 animate-fade-in">
           <div className="bg-white rounded-3xl shadow-xl p-6 w-full max-w-sm animate-modal-in">
             <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center mb-4 mx-auto">
               <Trash2 size={24} className="text-red-600" />
             </div>
-            <h3 className="text-xl font-bold text-dark text-center mb-2">Delete Product?</h3>
+            <h3 className="text-xl font-bold text-[#02575c] text-center mb-2">Delete Product?</h3>
             <p className="text-gray-500 text-center text-sm mb-6">
               Are you sure you want to delete this product? This action cannot be undone.
             </p>
@@ -235,10 +246,10 @@ const Inventory: React.FC = () => {
 
       {/* Add/Edit Modal */}
       {isModalOpen && (
-        <div className="fixed inset-0 bg-dark/20 backdrop-blur-sm z-[150] flex items-center justify-center p-4 animate-fade-in">
-          <div className="bg-white rounded-3xl shadow-xl p-8 w-full max-w-lg animate-modal-in overflow-y-auto max-h-[90vh]">
+        <div className="fixed inset-0 bg-black/30 backdrop-blur-sm z-[150] flex items-center justify-center p-4 animate-fade-in">
+          <div className="bg-white rounded-3xl shadow-xl p-6 md:p-8 w-full max-w-lg animate-modal-in overflow-y-auto max-h-[90vh]">
             <div className="flex justify-between items-center mb-6">
-              <h3 className="text-2xl font-bold text-dark">
+              <h3 className="text-xl md:text-2xl font-bold text-[#02575c]">
                 {editingProduct ? 'Edit Product' : 'Add New Product'}
               </h3>
               <button onClick={() => setIsModalOpen(false)} className="p-2 hover:bg-gray-100 rounded-full transition-colors">
@@ -248,91 +259,88 @@ const Inventory: React.FC = () => {
 
             <div className="space-y-4">
               <div>
-                <label className="block text-sm font-bold text-gray-700 mb-1 ml-1">Product Name</label>
+                <label className="block text-sm font-bold text-gray-600 mb-1 ml-1">Product Name</label>
                 <input
                   type="text"
                   value={formData.name}
                   onChange={e => setFormData({ ...formData, name: e.target.value })}
-                  className="w-full px-4 py-3 bg-bg rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/50 font-medium"
+                  className="w-full px-4 py-3 bg-[#F3F5F2] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#5abc8b]/50 font-medium text-[#02575c]"
                   placeholder="e.g. ImmunoDoc Ras"
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-bold text-gray-700 mb-1 ml-1">Category</label>
+                <label className="block text-sm font-bold text-gray-600 mb-1 ml-1">Category</label>
                 <input
                   type="text"
                   value={formData.category}
                   onChange={e => setFormData({ ...formData, category: e.target.value })}
-                  className="w-full px-4 py-3 bg-bg rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/50 font-medium"
+                  className="w-full px-4 py-3 bg-[#F3F5F2] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#5abc8b]/50 font-medium text-[#02575c]"
                   placeholder="e.g. Wellness"
                 />
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <div className="grid grid-cols-3 gap-3">
                 <div>
-                  <label className="block text-sm font-bold text-gray-700 mb-1 ml-1">MRP</label>
+                  <label className="block text-sm font-bold text-gray-600 mb-1 ml-1">MRP</label>
                   <input
                     type="number"
                     value={formData.mrp}
                     onChange={e => setFormData({ ...formData, mrp: e.target.value })}
-                    className="w-full px-4 py-3 bg-bg rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/50 font-medium"
+                    className="w-full px-3 py-3 bg-[#F3F5F2] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#5abc8b]/50 font-medium text-[#02575c]"
                     placeholder="0"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-bold text-gray-700 mb-1 ml-1">DP</label>
+                  <label className="block text-sm font-bold text-gray-600 mb-1 ml-1">DP</label>
                   <input
                     type="number"
                     value={formData.dp}
                     onChange={e => setFormData({ ...formData, dp: e.target.value })}
-                    className="w-full px-4 py-3 bg-bg rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/50 font-medium"
+                    className="w-full px-3 py-3 bg-[#F3F5F2] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#5abc8b]/50 font-medium text-[#02575c]"
                     placeholder="0"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-bold text-gray-700 mb-1 ml-1">SP</label>
+                  <label className="block text-sm font-bold text-gray-600 mb-1 ml-1">SP</label>
                   <input
                     type="number"
                     value={formData.sp}
                     onChange={e => setFormData({ ...formData, sp: e.target.value })}
-                    className="w-full px-4 py-3 bg-bg rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/50 font-medium"
+                    className="w-full px-3 py-3 bg-[#F3F5F2] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#5abc8b]/50 font-medium text-[#02575c]"
                     placeholder="0"
                   />
                 </div>
               </div>
 
               <div>
-                <label className="block text-sm font-bold text-gray-700 mb-1 ml-1">Stock Quantity</label>
+                <label className="block text-sm font-bold text-gray-600 mb-1 ml-1">Stock Quantity</label>
                 <input
                   type="number"
                   value={formData.stock}
                   onChange={e => setFormData({ ...formData, stock: e.target.value })}
-                  className="w-full px-4 py-3 bg-bg rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/50 font-medium"
+                  className="w-full px-4 py-3 bg-[#F3F5F2] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#5abc8b]/50 font-medium text-[#02575c]"
                   placeholder="0"
                 />
               </div>
 
               {/* Product Image Upload */}
               <div>
-                <label className="block text-sm font-bold text-gray-700 mb-1 ml-1">Product Image</label>
+                <label className="block text-sm font-bold text-gray-600 mb-1 ml-1">Product Image</label>
                 <div className="flex items-center gap-4">
-                  {/* Image Preview */}
-                  <div className="w-24 h-24 bg-bg rounded-xl border-2 border-dashed border-gray-300 flex items-center justify-center overflow-hidden">
+                  <div className="w-20 h-20 bg-[#F3F5F2] rounded-xl border-2 border-dashed border-gray-300 flex items-center justify-center overflow-hidden shrink-0">
                     {imagePreview ? (
                       <img src={imagePreview} alt="Preview" className="w-full h-full object-cover" />
                     ) : (
-                      <ImageIcon size={32} className="text-gray-400" />
+                      <ImageIcon size={28} className="text-gray-400" />
                     )}
                   </div>
-
-                  {/* Upload Button */}
                   <div className="flex-1">
                     <button
                       type="button"
                       onClick={() => imageInputRef.current?.click()}
                       disabled={isUploadingImage}
-                      className="w-full px-4 py-3 bg-bg rounded-xl font-medium text-gray-700 hover:bg-gray-200 transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
+                      className="w-full px-4 py-2.5 bg-[#F3F5F2] rounded-xl font-medium text-gray-600 hover:bg-gray-200 transition-colors flex items-center justify-center gap-2 disabled:opacity-50 text-sm"
                     >
                       {isUploadingImage ? (
                         <>
@@ -341,15 +349,13 @@ const Inventory: React.FC = () => {
                         </>
                       ) : (
                         <>
-                          <Upload size={18} />
+                          <Upload size={16} />
                           {imagePreview ? 'Change Image' : 'Upload Image'}
                         </>
                       )}
                     </button>
-                    <p className="text-xs text-gray-500 mt-1 ml-1">JPG, PNG up to 5MB</p>
+                    <p className="text-[10px] text-gray-400 mt-1 ml-1">JPG, PNG up to 5MB</p>
                   </div>
-
-                  {/* Hidden File Input */}
                   <input
                     ref={imageInputRef}
                     type="file"
@@ -361,7 +367,7 @@ const Inventory: React.FC = () => {
               </div>
             </div>
 
-            <div className="flex gap-3 mt-8">
+            <div className="flex gap-3 mt-6">
               <button
                 onClick={() => setIsModalOpen(false)}
                 className="flex-1 py-3 rounded-xl font-bold text-gray-500 hover:bg-gray-100 transition-colors"
@@ -370,7 +376,7 @@ const Inventory: React.FC = () => {
               </button>
               <button
                 onClick={handleSave}
-                className="flex-1 py-3 rounded-xl font-bold bg-dark text-white hover:bg-dark-light shadow-lg hover:shadow-xl transition-all flex justify-center items-center gap-2"
+                className="flex-1 py-3 rounded-xl font-bold bg-[#02575c] text-white hover:bg-[#02575c]/90 shadow-lg hover:shadow-xl transition-all flex justify-center items-center gap-2"
               >
                 <Save size={18} /> {editingProduct ? 'Save Changes' : 'Add Product'}
               </button>
@@ -379,50 +385,51 @@ const Inventory: React.FC = () => {
         </div>
       )}
 
-      {/* Top Controls */}
-      <div className="flex flex-col md:flex-row justify-between items-center bg-white p-4 rounded-3xl shadow-sm gap-4 shrink-0 w-full">
-        <div className="relative w-full md:flex-1 min-w-0">
-          <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+      {/* Top Controls - Search + Filters in one card */}
+      <div className="bg-white rounded-2xl md:rounded-3xl shadow-sm border border-gray-100/60 p-3 md:p-4 shrink-0 w-full">
+        {/* Search Row */}
+        <div className="relative w-full mb-2.5">
+          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[#02575c]/35" size={17} />
           <input
             type="text"
             placeholder="Search products..."
-            className="w-full pl-11 pr-4 py-3 bg-bg rounded-2xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 text-dark"
+            className="w-full pl-10 pr-4 py-2.5 bg-[#F3F5F2] rounded-xl text-sm font-medium focus:outline-none focus:ring-2 focus:ring-[#5abc8b]/40 text-[#02575c] placeholder:text-gray-400"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
           />
         </div>
 
-        <div className="flex w-full md:w-auto items-center gap-2 md:gap-3">
+        {/* Actions Row */}
+        <div className="flex items-center gap-2">
           {/* Category Dropdown */}
-          <div className="relative">
-            <div className="relative">
-              <select
-                value={selectedCategory}
-                onChange={(e) => setSelectedCategory(e.target.value)}
-                className="appearance-none bg-white border border-gray-200 text-gray-700 px-4 py-3 pr-10 rounded-2xl font-medium focus:outline-none focus:ring-2 focus:ring-primary/50 cursor-pointer text-sm"
-              >
-                {categories.map(cat => (
-                  <option key={cat} value={cat}>{cat}</option>
-                ))}
-              </select>
-              <ChevronDown size={16} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
-            </div>
+          <div className="relative flex-1 min-w-0">
+            <select
+              value={selectedCategory}
+              onChange={(e) => setSelectedCategory(e.target.value)}
+              className="appearance-none w-full bg-[#e7faff] text-[#02575c] px-3 py-2.5 pr-8 rounded-xl font-semibold focus:outline-none focus:ring-2 focus:ring-[#5abc8b]/40 cursor-pointer text-sm border-none"
+            >
+              {categories.map(cat => (
+                <option key={cat} value={cat}>{cat}</option>
+              ))}
+            </select>
+            <ChevronDown size={15} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[#02575c]/50 pointer-events-none" />
           </div>
 
           {/* Add Item Button */}
           <button
             onClick={handleOpenAdd}
-            className="bg-dark text-white px-4 py-3 rounded-2xl font-bold flex items-center justify-center gap-2 hover:bg-dark-light transition shadow-sm text-sm whitespace-nowrap"
+            className="bg-[#02575c] text-white w-[40px] h-[40px] rounded-xl font-bold flex items-center justify-center hover:bg-[#02575c]/90 transition shadow-sm shrink-0"
+            title="Add Product"
           >
-            <Plus size={18} /> <span className="hidden sm:inline">Add Item</span>
+            <Plus size={20} strokeWidth={2.5} />
           </button>
 
           {/* Receipt Scan Button */}
           <button
             onClick={() => setIsReceiptScanOpen(true)}
-            className="flex-1 md:flex-none bg-primary text-dark px-3 md:px-4 py-3 rounded-2xl font-bold flex items-center justify-center gap-2 hover:bg-primary-hover transition shadow-sm text-sm whitespace-nowrap"
+            className="bg-[#5abc8b] text-white px-4 h-[40px] rounded-xl font-bold flex items-center justify-center gap-1.5 hover:bg-[#4da87a] transition shadow-sm text-sm whitespace-nowrap shrink-0"
           >
-            <Camera size={18} /> <span className="hidden sm:inline">Scan Receipt</span><span className="sm:hidden">Scan</span>
+            <Camera size={15} /> Scan
           </button>
 
           {/* Receipt Scan Modal */}
@@ -435,101 +442,121 @@ const Inventory: React.FC = () => {
         </div>
       </div>
 
-      {/* Mobile Stats Toggle Button */}
-      <div className="md:hidden w-full px-1">
+      {/* Mobile Stats Toggle */}
+      <div className="md:hidden w-full shrink-0">
         <button
           onClick={() => setIsStatsOpen(!isStatsOpen)}
-          className="w-full flex items-center justify-between bg-white p-4 rounded-2xl shadow-sm text-dark font-bold"
+          className="w-full flex items-center justify-between bg-white px-4 py-3 rounded-2xl shadow-sm text-[#02575c] font-bold text-sm border border-gray-100/60"
         >
-          <span>Inventory Snapshot</span>
-          <div className="flex items-center gap-2 text-primary-600 text-sm">
-            {isStatsOpen ? 'Hide Stats' : 'Show Stats'}
-            {isStatsOpen ? <ChevronDown className="rotate-180 transition-transform" size={20} /> : <ChevronDown className="transition-transform" size={20} />}
+          <div className="flex items-center gap-2">
+            <div className="w-6 h-6 rounded-lg bg-[#e7faff] flex items-center justify-center">
+              <Package size={13} className="text-[#02575c]" />
+            </div>
+            <span>Inventory Snapshot</span>
           </div>
+          <ChevronDown className={`transition-transform duration-200 text-[#5abc8b] ${isStatsOpen ? 'rotate-180' : ''}`} size={18} />
         </button>
       </div>
 
-      <div className="flex-1 flex flex-col gap-6 overflow-hidden w-full">
+      <div className="flex-1 flex flex-col gap-3 md:gap-4 overflow-hidden w-full">
 
-        {/* Inventory Stats Grid */}
-        {/* Inventory Stats - Desktop Unified Card / Mobile Collapsible */}
+        {/* Inventory Stats */}
         <div className={`w-full shrink-0 ${isStatsOpen ? 'block' : 'hidden md:block'}`}>
-          <div className={`
-             ${isStatsOpen ? 'bg-transparent shadow-none p-0' : 'bg-white shadow-sm p-5 border border-transparent'} 
-             md:bg-white md:shadow-sm md:p-5 md:rounded-3xl transition-all
-           `}>
-            <div className="flex overflow-x-auto pb-4 md:pb-0 gap-4 md:gap-0 md:grid md:grid-cols-4 md:divide-x md:divide-gray-100 no-scrollbar snap-x">
-
-              {/* Total Items */}
-              <div className="min-w-[260px] md:min-w-0 snap-center bg-white p-5 md:p-0 rounded-3xl md:rounded-none shadow-sm md:shadow-none flex flex-col md:flex-col justify-between items-start md:px-6 md:first:pl-0 relative overflow-hidden group">
-                <div className="absolute top-0 right-0 w-24 h-24 bg-blue-50 rounded-bl-full -mr-8 -mt-8 transition-transform group-hover:scale-110 md:hidden"></div>
-                <div className="relative z-10">
-                  <p className="text-gray-500 font-bold text-xs uppercase tracking-wider mb-1">Total Items</p>
-                  <h3 className="text-2xl font-black text-dark">{products.length}</h3>
+          {/* Mobile: horizontal scroll compact stats */}
+          <div className="md:hidden flex overflow-x-auto gap-2.5 pb-1 no-scrollbar snap-x">
+            {[
+              { label: 'Items', value: products.length.toString(), icon: <Package size={13} />, bg: '#e7faff' },
+              { label: 'MRP Value', value: `₹${totalMrp.toLocaleString()}`, icon: <TrendingUp size={13} />, bg: '#e4f595' },
+              { label: 'DP Value', value: `₹${totalDp.toLocaleString()}`, icon: <Sparkles size={13} />, bg: '#e7faff' },
+              { label: 'SP Total', value: totalSp.toLocaleString(), icon: <ShoppingCart size={13} />, bg: '#e4f595' },
+            ].map((stat, i) => (
+              <div key={i} className="min-w-[130px] snap-center bg-white rounded-2xl p-3 shadow-sm border border-gray-100/60 flex flex-col gap-1.5">
+                <div className="flex items-center justify-between">
+                  <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">{stat.label}</p>
+                  <div className="w-6 h-6 rounded-lg flex items-center justify-center text-[#02575c]" style={{ backgroundColor: stat.bg }}>
+                    {stat.icon}
+                  </div>
                 </div>
-                <div className="relative z-10 mt-4 md:mt-2 flex items-center gap-2 text-blue-600 bg-blue-50 px-2 py-1 rounded-lg self-start">
-                  <Package size={14} />
-                  <span className="text-xs font-bold">In Stock</span>
-                </div>
+                <p className="text-[15px] font-extrabold text-[#02575c] leading-tight">{stat.value}</p>
               </div>
+            ))}
+          </div>
 
-              {/* MRP */}
-              <div className="min-w-[260px] md:min-w-0 snap-center bg-white p-5 md:p-0 rounded-3xl md:rounded-none shadow-sm md:shadow-none flex flex-col md:flex-col justify-between items-start md:px-6 relative overflow-hidden group">
-                <div className="absolute top-0 right-0 w-24 h-24 bg-orange-50 rounded-bl-full -mr-8 -mt-8 transition-transform group-hover:scale-110 md:hidden"></div>
-                <div className="relative z-10">
-                  <p className="text-gray-500 font-bold text-xs uppercase tracking-wider mb-1">Total Stock Cost (MRP)</p>
-                  <h3 className="text-2xl font-black text-dark">₹{totalMrp.toLocaleString()}</h3>
+          {/* Desktop: single card with dividers */}
+          <div className="hidden md:block bg-white shadow-sm p-5 rounded-3xl border border-gray-100/60">
+            <div className="grid grid-cols-4 divide-x divide-gray-100">
+              {[
+                { label: 'Total Items', value: products.length.toString(), sub: 'In Stock', icon: <Package size={14} />, bg: '#e7faff' },
+                { label: 'Stock Cost (MRP)', value: `₹${totalMrp.toLocaleString()}`, sub: 'Market Price', icon: <TrendingUp size={14} />, bg: '#e4f595' },
+                { label: 'Stock Cost (DP)', value: `₹${totalDp.toLocaleString()}`, sub: 'Distributor Price', icon: <Sparkles size={14} />, bg: '#e7faff' },
+                { label: 'Total SP Value', value: totalSp.toLocaleString(), sub: 'Sales Points', icon: <ShoppingCart size={14} />, bg: '#e4f595' },
+              ].map((stat, i) => (
+                <div key={i} className="px-6 first:pl-0">
+                  <p className="text-gray-400 font-bold text-xs uppercase tracking-wider mb-1">{stat.label}</p>
+                  <h3 className="text-2xl font-extrabold text-[#02575c]">{stat.value}</h3>
+                  <div className="mt-2 flex items-center gap-2 px-2 py-1 rounded-lg w-fit text-[#02575c]" style={{ backgroundColor: stat.bg }}>
+                    {stat.icon}
+                    <span className="text-xs font-bold">{stat.sub}</span>
+                  </div>
                 </div>
-                <div className="relative z-10 mt-4 md:mt-2 flex items-center gap-2 text-orange-600 bg-orange-50 px-2 py-1 rounded-lg self-start">
-                  <TrendingUp size={14} />
-                  <span className="text-xs font-bold">Market Price</span>
-                </div>
-              </div>
-
-              {/* DP */}
-              <div className="min-w-[260px] md:min-w-0 snap-center bg-white p-5 md:p-0 rounded-3xl md:rounded-none shadow-sm md:shadow-none flex flex-col md:flex-col justify-between items-start md:px-6 relative overflow-hidden group">
-                <div className="absolute top-0 right-0 w-24 h-24 bg-purple-50 rounded-bl-full -mr-8 -mt-8 transition-transform group-hover:scale-110 md:hidden"></div>
-                <div className="relative z-10">
-                  <p className="text-gray-500 font-bold text-xs uppercase tracking-wider mb-1">Total Stock Cost</p>
-                  <h3 className="text-2xl font-black text-dark">₹{totalDp.toLocaleString()}</h3>
-                </div>
-                <div className="relative z-10 mt-4 md:mt-2 flex items-center gap-2 text-purple-600 bg-purple-50 px-2 py-1 rounded-lg self-start">
-                  <Sparkles size={14} />
-                  <span className="text-xs font-bold">Distributor Price</span>
-                </div>
-              </div>
-
-              {/* SP (No Prefix) */}
-              <div className="min-w-[260px] md:min-w-0 snap-center bg-white p-5 md:p-0 rounded-3xl md:rounded-none shadow-sm md:shadow-none flex flex-col md:flex-col justify-between items-start md:px-6 relative overflow-hidden group">
-                <div className="absolute top-0 right-0 w-24 h-24 bg-green-50 rounded-bl-full -mr-8 -mt-8 transition-transform group-hover:scale-110 md:hidden"></div>
-                <div className="relative z-10">
-                  <p className="text-gray-500 font-bold text-xs uppercase tracking-wider mb-1">Total SP Value</p>
-                  <h3 className="text-2xl font-black text-dark">{totalSp.toLocaleString()}</h3>
-                </div>
-                <div className="relative z-10 mt-4 md:mt-2 flex items-center gap-2 text-green-600 bg-green-50 px-2 py-1 rounded-lg self-start">
-                  <ShoppingCart size={14} />
-                  <span className="text-xs font-bold">Sales Point</span>
-                </div>
-              </div>
-
+              ))}
             </div>
           </div>
         </div>
 
-        {/* Inventory List */}
-        <div className="flex-1 bg-white rounded-3xl shadow-sm flex flex-col overflow-hidden p-4 md:p-6 w-full">
-          <div className="flex justify-between items-center mb-4 shrink-0 relative z-30">
-            <h3 className="font-bold text-dark text-lg">Product List</h3>
+        {/* Zero Out Confirmation Modal */}
+        {showZeroOutConfirm && (
+          <div className="fixed inset-0 bg-black/30 backdrop-blur-sm z-[150] flex items-center justify-center p-4 animate-fade-in">
+            <div className="bg-white rounded-3xl shadow-xl p-6 w-full max-w-sm animate-modal-in">
+              <div className="w-12 h-12 bg-orange-100 rounded-full flex items-center justify-center mb-4 mx-auto">
+                <RotateCcw size={24} className="text-orange-600" />
+              </div>
+              <h3 className="text-xl font-bold text-[#02575c] text-center mb-2">Zero Out All Stock?</h3>
+              <p className="text-gray-500 text-center text-sm mb-6">
+                This will set the stock quantity of all <strong>{products.length}</strong> products to <strong>0</strong>. You can then update each product's stock individually.
+              </p>
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setShowZeroOutConfirm(false)}
+                  className="flex-1 py-3 rounded-xl font-bold text-gray-500 hover:bg-gray-100 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleZeroOutStock}
+                  className="flex-1 py-3 rounded-xl font-bold bg-orange-500 text-white hover:bg-orange-600 shadow-sm transition-all"
+                >
+                  Zero Out
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
 
+        {/* Inventory List */}
+        <div className="flex-1 bg-white rounded-2xl md:rounded-3xl shadow-sm flex flex-col overflow-hidden border border-gray-100/60 w-full">
+          {/* List Header */}
+          <div className="flex justify-between items-center px-4 md:px-6 pt-3.5 md:pt-5 pb-2.5 md:pb-3 shrink-0 border-b border-gray-100/80">
+            <div className="flex items-center gap-2">
+              <h3 className="font-bold text-[#02575c] text-[15px] md:text-lg">Products</h3>
+              <span className="text-[11px] font-semibold text-[#02575c]/60 bg-[#e7faff] px-2 py-0.5 rounded-full">{filtered.length}</span>
+            </div>
+            <button
+              onClick={() => setShowZeroOutConfirm(true)}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[12px] font-semibold text-orange-500 bg-orange-50 hover:bg-orange-100 active:scale-95 transition-all"
+            >
+              <RotateCcw size={13} />
+              Zero Stock
+            </button>
           </div>
 
           <div className="overflow-y-auto flex-1 pb-24 md:pb-2 custom-scrollbar w-full">
             {/* Desktop Table View */}
-            <div className="hidden md:block">
-              <table className="w-full text-left border-separate border-spacing-y-2">
-                <thead className="text-gray-400 text-xs uppercase font-semibold sticky top-0 bg-white z-10">
+            <div className="hidden md:block px-6 pt-2">
+              <table className="w-full text-left border-separate border-spacing-y-1">
+                <thead className="text-gray-400 text-[11px] uppercase font-semibold sticky top-0 bg-white z-10">
                   <tr>
-                    <th className="pb-3 pl-2">Product Name</th>
+                    <th className="pb-3 pl-3">Product Name</th>
                     <th className="pb-3">Category</th>
                     <th className="pb-3 text-right">MRP</th>
                     <th className="pb-3 text-right">DP</th>
@@ -541,16 +568,16 @@ const Inventory: React.FC = () => {
                 </thead>
                 <tbody className="text-sm">
                   {filtered.map(product => (
-                    <tr key={product.id} className="group hover:bg-gray-50 transition-colors">
-                      <td className="p-4 font-bold text-dark bg-bg rounded-l-2xl group-hover:bg-white border border-transparent group-hover:border-gray-100 min-w-[150px]">{product.name}</td>
-                      <td className="p-4 bg-bg group-hover:bg-white border border-transparent group-hover:border-gray-100">
-                        <span className="bg-white px-2 py-1 rounded text-xs text-gray-600 border shadow-sm whitespace-nowrap">{product.category}</span>
+                    <tr key={product.id} className="group hover:bg-[#e7faff]/30 transition-colors">
+                      <td className="p-3.5 font-bold text-[#02575c] bg-[#F8F9F7] rounded-l-xl group-hover:bg-[#e7faff]/50 min-w-[150px]">{product.name}</td>
+                      <td className="p-3.5 bg-[#F8F9F7] group-hover:bg-[#e7faff]/50">
+                        <span className="bg-white px-2 py-0.5 rounded-md text-[11px] text-gray-500 font-medium border border-gray-100 whitespace-nowrap">{product.category}</span>
                       </td>
-                      <td className="p-4 text-right text-gray-600 bg-bg group-hover:bg-white border border-transparent group-hover:border-gray-100">₹{product.mrp}</td>
-                      <td className="p-4 text-right font-bold text-dark bg-bg group-hover:bg-white border border-transparent group-hover:border-gray-100">₹{product.dp}</td>
-                      <td className="p-4 text-center font-bold text-primary-600 bg-bg group-hover:bg-white border border-transparent group-hover:border-gray-100">{product.sp}</td>
+                      <td className="p-3.5 text-right text-gray-400 font-medium bg-[#F8F9F7] group-hover:bg-[#e7faff]/50">₹{product.mrp}</td>
+                      <td className="p-3.5 text-right font-bold text-[#02575c] bg-[#F8F9F7] group-hover:bg-[#e7faff]/50">₹{product.dp}</td>
+                      <td className="p-3.5 text-center font-bold text-[#5abc8b] bg-[#F8F9F7] group-hover:bg-[#e7faff]/50">{product.sp}</td>
                       <td
-                        className="p-4 text-center font-medium bg-bg group-hover:bg-white border border-transparent group-hover:border-gray-100 cursor-pointer hover:bg-gray-200 transition-colors"
+                        className="p-3.5 text-center font-semibold bg-[#F8F9F7] group-hover:bg-[#e7faff]/50 cursor-pointer"
                         onDoubleClick={() => startEditingStock(product)}
                         title="Double click to edit stock"
                       >
@@ -561,31 +588,31 @@ const Inventory: React.FC = () => {
                             onChange={(e) => setEditStockValue(e.target.value)}
                             onBlur={saveStock}
                             onKeyDown={handleStockKeyDown}
-                            className="w-20 px-2 py-1 rounded border border-primary focus:outline-none focus:ring-2 focus:ring-primary text-center"
+                            className="w-16 px-2 py-1 rounded-lg border border-[#5abc8b] focus:outline-none focus:ring-2 focus:ring-[#5abc8b]/50 text-center text-[#02575c] text-sm"
                             autoFocus
                           />
                         ) : (
-                          product.stock
+                          <span className="text-[#02575c]">{product.stock}</span>
                         )}
                       </td>
-                      <td className="p-4 text-center bg-bg group-hover:bg-white border border-transparent group-hover:border-gray-100">
+                      <td className="p-3.5 text-center bg-[#F8F9F7] group-hover:bg-[#e7faff]/50">
                         {product.stock < 15 ? (
-                          <span className="inline-flex items-center gap-1 text-[10px] font-bold text-red-600 bg-red-100 px-2 py-1 rounded-lg whitespace-nowrap">
+                          <span className="inline-flex items-center gap-1 text-[10px] font-bold text-red-600 bg-red-50 px-2 py-0.5 rounded-lg whitespace-nowrap">
                             <AlertTriangle size={10} /> Low
                           </span>
                         ) : (
-                          <span className="text-[10px] font-bold text-dark bg-primary px-2 py-1 rounded-lg">
+                          <span className="text-[10px] font-bold text-[#02575c] bg-[#e4f595] px-2 py-0.5 rounded-lg">
                             Good
                           </span>
                         )}
                       </td>
-                      <td className="p-4 text-center bg-bg rounded-r-2xl group-hover:bg-white border border-transparent group-hover:border-gray-100 w-24">
-                        <div className="flex justify-center gap-2">
-                          <button onClick={() => handleOpenEdit(product)} className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-500 hover:text-primary-600 transition-colors" title="Edit">
-                            <Pencil size={16} />
+                      <td className="p-3.5 text-center bg-[#F8F9F7] rounded-r-xl group-hover:bg-[#e7faff]/50 w-24">
+                        <div className="flex justify-center gap-1">
+                          <button onClick={() => handleOpenEdit(product)} className="p-1.5 rounded-lg hover:bg-white text-gray-400 hover:text-[#02575c] transition-colors" title="Edit">
+                            <Pencil size={15} />
                           </button>
-                          <button onClick={() => setDeleteConfirmId(product.id)} className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-500 hover:text-red-600 transition-colors" title="Delete">
-                            <Trash2 size={16} />
+                          <button onClick={() => setDeleteConfirmId(product.id)} className="p-1.5 rounded-lg hover:bg-white text-gray-400 hover:text-red-500 transition-colors" title="Delete">
+                            <Trash2 size={15} />
                           </button>
                         </div>
                       </td>
@@ -595,60 +622,96 @@ const Inventory: React.FC = () => {
               </table>
             </div>
 
-            {/* Mobile Card View */}
-            <div className="md:hidden space-y-3">
-              {filtered.map(product => (
-                <div key={product.id} className="bg-bg rounded-2xl p-4 border border-transparent hover:border-gray-200 transition-all">
-                  {/* Product Header */}
-                  <div className="flex justify-between items-start mb-3">
-                    <div className="flex-1 min-w-0">
-                      <h4 className="font-bold text-dark text-sm truncate">{product.name}</h4>
-                      <span className="inline-block bg-white px-2 py-0.5 rounded text-[10px] text-gray-600 border shadow-sm mt-1">
-                        {product.category}
-                      </span>
-                    </div>
-                    <div className="flex gap-1 ml-2">
-                      <button onClick={() => handleOpenEdit(product)} className="p-2 rounded-lg hover:bg-white text-gray-500 hover:text-primary-600 transition-colors" title="Edit">
-                        <Pencil size={16} />
-                      </button>
-                      <button onClick={() => setDeleteConfirmId(product.id)} className="p-2 rounded-lg hover:bg-white text-gray-500 hover:text-red-600 transition-colors" title="Delete">
-                        <Trash2 size={16} />
-                      </button>
-                    </div>
-                  </div>
+            {/* Mobile List View - Inspired by Billing Added Items */}
+            <div className="md:hidden py-1">
+              {filtered.map((product, index) => {
+                const isLow = product.stock < 15;
+                return (
+                  <div key={product.id} className="relative">
+                    {/* Divider */}
+                    {index > 0 && (
+                      <div className="ml-[60px] mr-4 h-[1px] bg-[#EFEFEF]" />
+                    )}
+                    <div className="px-4 py-3 flex items-center gap-3 active:bg-[#e7faff]/20 transition-colors">
+                      {/* Left: Stock Status Circle / Inline Editor */}
+                      {editingStockId === product.id ? (
+                        <div className="shrink-0 flex items-center gap-1 animate-fade-in">
+                          <input
+                            type="number"
+                            inputMode="numeric"
+                            value={editStockValue}
+                            onChange={(e) => setEditStockValue(e.target.value)}
+                            onKeyDown={handleStockKeyDown}
+                            onBlur={saveStock}
+                            autoFocus
+                            className="w-[52px] h-[40px] rounded-xl bg-[#e7faff] border-2 border-[#02575c] text-center text-[#02575c] font-bold text-[14px] focus:outline-none appearance-none [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+                          />
+                          <button
+                            onMouseDown={(e) => { e.preventDefault(); saveStock(e); }}
+                            className="w-[32px] h-[32px] rounded-full bg-[#02575c] flex items-center justify-center shrink-0 active:scale-90 transition-transform"
+                          >
+                            <Check size={16} className="text-white" strokeWidth={3} />
+                          </button>
+                        </div>
+                      ) : (
+                        <div
+                          onClick={() => startEditingStock(product)}
+                          className={`shrink-0 w-[40px] h-[40px] rounded-full flex items-center justify-center cursor-pointer active:scale-90 transition-transform ${
+                            isLow ? 'bg-[#FFC7C7]' : 'bg-[#E4F595]'
+                          }`}
+                        >
+                          {isLow ? (
+                            <span className="text-[#F22] font-bold text-[11px] leading-none">{product.stock}</span>
+                          ) : (
+                            <span className="text-[#02575c] font-bold text-[12px] leading-none">{product.stock}</span>
+                          )}
+                        </div>
+                      )}
 
-                  {/* Product Details Grid */}
-                  <div className="grid grid-cols-2 gap-3">
-                    <div className="bg-white rounded-lg p-2">
-                      <p className="text-[10px] text-gray-500 font-bold uppercase mb-0.5">MRP</p>
-                      <p className="text-sm font-semibold text-gray-700">₹{product.mrp}</p>
-                    </div>
-                    <div className="bg-white rounded-lg p-2">
-                      <p className="text-[10px] text-gray-500 font-bold uppercase mb-0.5">DP</p>
-                      <p className="text-sm font-bold text-dark">₹{product.dp}</p>
-                    </div>
-                    <div className="bg-white rounded-lg p-2">
-                      <p className="text-[10px] text-gray-500 font-bold uppercase mb-0.5">SP</p>
-                      <p className="text-sm font-bold text-primary-600">{product.sp}</p>
-                    </div>
-                    <div className="bg-white rounded-lg p-2">
-                      <p className="text-[10px] text-gray-500 font-bold uppercase mb-0.5">Stock</p>
-                      <div className="flex items-center gap-2">
-                        <p className="text-sm font-semibold text-dark">{product.stock}</p>
-                        {product.stock < 15 ? (
-                          <span className="inline-flex items-center gap-1 text-[9px] font-bold text-red-600 bg-red-100 px-1.5 py-0.5 rounded">
-                            <AlertTriangle size={9} /> Low
-                          </span>
-                        ) : (
-                          <span className="text-[9px] font-bold text-dark bg-primary px-1.5 py-0.5 rounded">
-                            Good
-                          </span>
-                        )}
+                      {/* Center: Product Details */}
+                      <div className="flex-1 min-w-0 flex flex-col justify-center gap-1">
+                        <h4 className="font-semibold text-[#02575c] text-[13px] leading-tight truncate">{product.name}</h4>
+                        <div className="flex items-center gap-2">
+                          {/* SP Pill */}
+                          <div className={`px-2 py-[2px] rounded-full flex items-center justify-center shrink-0 ${isLow ? 'bg-[#FFE7E7]' : 'bg-[#E7FAFF]'}`}>
+                            <span className={`text-[10px] font-medium whitespace-nowrap ${isLow ? 'text-[#353535]' : 'text-[#00747B]'}`}>SP {product.sp}</span>
+                          </div>
+                          {/* DP Pill */}
+                          <div className="bg-[#F0F0F0] px-2 py-[2px] rounded-full flex items-center justify-center shrink-0">
+                            <span className="text-[10px] font-medium text-[#02575c] whitespace-nowrap">DP ₹{product.dp}</span>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Right: MRP Price + Edit/Delete */}
+                      <div className="flex items-center gap-2 shrink-0">
+                        <span className="text-[15px] font-extrabold text-[#02575c]">₹{product.mrp}</span>
+                        <div className="flex items-center gap-0.5">
+                          <button
+                            onClick={() => handleOpenEdit(product)}
+                            className="p-1.5 rounded-lg text-gray-300 active:text-[#02575c] active:bg-[#e7faff] transition-colors"
+                          >
+                            <Pencil size={14} />
+                          </button>
+                          <button
+                            onClick={() => setDeleteConfirmId(product.id)}
+                            className="p-1.5 rounded-lg text-gray-300 active:text-red-500 active:bg-red-50 transition-colors"
+                          >
+                            <Trash2 size={14} />
+                          </button>
+                        </div>
                       </div>
                     </div>
                   </div>
+                );
+              })}
+
+              {filtered.length === 0 && (
+                <div className="py-16 text-center">
+                  <Package size={36} className="text-gray-200 mx-auto mb-3" />
+                  <p className="text-sm text-gray-400 font-medium">No products found</p>
                 </div>
-              ))}
+              )}
             </div>
           </div>
         </div>

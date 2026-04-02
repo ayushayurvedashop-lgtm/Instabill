@@ -134,7 +134,7 @@ const CustomerSearchBar: React.FC<CustomerSearchBarProps> = ({
                                     exit={{ scale: 0.8, opacity: 0 }}
                                     transition={{ duration: 0.15 }}
                                 >
-                                    <User className="w-3.5 h-3.5 text-[#12332A]" />
+                                    <User className="w-3.5 h-3.5 text-[#02575c]" />
                                 </motion.div>
                             ) : (
                                 <motion.div
@@ -154,7 +154,7 @@ const CustomerSearchBar: React.FC<CustomerSearchBarProps> = ({
                 {/* Add New Customer Button */}
                 <button
                     onClick={onAddNew}
-                    className="flex items-center gap-1.5 px-3 py-2.5 bg-[#12332A] hover:bg-[#1a4438] text-white rounded-xl font-semibold text-xs transition-all shadow-sm whitespace-nowrap"
+                    className="flex items-center gap-1.5 px-3 py-2.5 bg-[#02575c] hover:bg-[#1a4438] text-white rounded-xl font-semibold text-xs transition-all shadow-sm whitespace-nowrap"
                 >
                     <UserPlus size={14} />
                     <span className="hidden xl:inline">Add</span>
@@ -178,7 +178,7 @@ const CustomerSearchBar: React.FC<CustomerSearchBarProps> = ({
                                     <li
                                         key={customer.id}
                                         className={`px-4 py-3 cursor-pointer flex items-center justify-between transition-colors ${index === highlightedIndex
-                                            ? 'bg-[#12332A]/5'
+                                            ? 'bg-[#02575c]/5'
                                             : 'hover:bg-gray-50'
                                             }`}
                                         onMouseEnter={() => setHighlightedIndex(index)}
@@ -214,7 +214,7 @@ const CustomerSearchBar: React.FC<CustomerSearchBarProps> = ({
                                             e.preventDefault();
                                             onAddNew();
                                         }}
-                                        className="mt-2 text-sm font-semibold text-[#12332A] hover:underline"
+                                        className="mt-2 text-sm font-semibold text-[#02575c] hover:underline"
                                     >
                                         + Add as new customer
                                     </button>

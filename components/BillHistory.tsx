@@ -145,13 +145,13 @@ const BillHistory: React.FC<BillHistoryProps> = ({ onEditBill }) => {
                                         onClick={() => setSelectedBill(bill)}
                                         className="hover:bg-gray-50 transition-all group cursor-pointer active:scale-[0.99]"
                                     >
-                                        <td className="p-4 font-bold text-[#111617]">{bill.id}</td>
+                                        <td className="p-4 font-bold text-[#02575c]">{bill.id}</td>
                                         <td className="p-4">
                                             <div className="flex items-center gap-3">
-                                                <div className="w-9 h-9 rounded-full bg-[#daf4d7] flex items-center justify-center text-[#111617] font-bold text-xs ring-2 ring-transparent group-hover:ring-[#88de7d] transition-all">
+                                                <div className="w-9 h-9 rounded-full bg-[#daf4d7] flex items-center justify-center text-[#02575c] font-bold text-xs ring-2 ring-transparent group-hover:ring-[#88de7d] transition-all">
                                                     {bill.customerName.charAt(0).toUpperCase()}
                                                 </div>
-                                                <span className="font-semibold text-[#111617]">{bill.customerName}</span>
+                                                <span className="font-semibold text-[#02575c]">{bill.customerName}</span>
                                             </div>
                                         </td>
                                         <td className="p-4 text-gray-500 text-sm">
@@ -160,9 +160,9 @@ const BillHistory: React.FC<BillHistoryProps> = ({ onEditBill }) => {
                                                 {bill.time && <span className="flex items-center gap-1.5 text-xs text-gray-400"><Clock size={13} /> {bill.time}</span>}
                                             </div>
                                         </td>
-                                        <td className="p-4 text-right font-bold text-[#111617] text-lg">₹{bill.totalAmount}</td>
+                                        <td className="p-4 text-right font-bold text-[#02575c] text-lg">₹{bill.totalAmount}</td>
                                         <td className="p-4 text-center">
-                                            <span className={`px-2.5 py-1 rounded-lg text-xs font-bold ${bill.isPaid ? 'bg-green-100 text-green-700' : 'bg-red-50 text-red-600'}`}>
+                                            <span className={`px-2.5 py-1 rounded-lg text-xs font-bold ${bill.isPaid ? 'bg-green-100 text-[#5abc8b]' : 'bg-red-50 text-red-600'}`}>
                                                 {bill.isPaid ? 'Paid' : 'Unpaid'}
                                             </span>
                                         </td>
@@ -191,15 +191,15 @@ const BillHistory: React.FC<BillHistoryProps> = ({ onEditBill }) => {
                                 {/* Header Row */}
                                 <div className="flex items-start justify-between">
                                     <div className="flex items-center gap-3">
-                                        <div className="w-10 h-10 rounded-full bg-[#daf4d7] flex items-center justify-center text-[#111617] font-bold text-sm ring-2 ring-transparent group-hover:ring-[#88de7d] transition-all">
+                                        <div className="w-10 h-10 rounded-full bg-[#daf4d7] flex items-center justify-center text-[#02575c] font-bold text-sm ring-2 ring-transparent group-hover:ring-[#88de7d] transition-all">
                                             {bill.customerName.charAt(0).toUpperCase()}
                                         </div>
                                         <div>
-                                            <p className="font-bold text-[#111617] text-base leading-tight">{bill.customerName}</p>
+                                            <p className="font-bold text-[#02575c] text-base leading-tight">{bill.customerName}</p>
                                             <p className="text-xs text-gray-400 font-medium mt-0.5">{bill.id}</p>
                                         </div>
                                     </div>
-                                    <span className={`px-2.5 py-1 rounded-lg text-xs font-bold whitespace-nowrap ${bill.isPaid ? 'bg-green-100 text-green-700' : 'bg-red-50 text-red-600'}`}>
+                                    <span className={`px-2.5 py-1 rounded-lg text-xs font-bold whitespace-nowrap ${bill.isPaid ? 'bg-green-100 text-[#5abc8b]' : 'bg-red-50 text-red-600'}`}>
                                         {bill.isPaid ? 'Paid' : 'Unpaid'}
                                     </span>
                                 </div>
@@ -217,7 +217,7 @@ const BillHistory: React.FC<BillHistoryProps> = ({ onEditBill }) => {
                                         )}
                                     </div>
                                     <div className="text-right">
-                                        <p className="text-2xl font-black text-[#111617]">₹{bill.totalAmount}</p>
+                                        <p className="text-2xl font-black text-[#02575c]">₹{bill.totalAmount}</p>
                                     </div>
                                 </div>
                             </div>

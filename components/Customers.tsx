@@ -338,7 +338,7 @@ const Customers: React.FC<CustomersProps> = ({ onEditBill }) => {
               <div className="bg-bg p-4 md:p-6 rounded-2xl md:rounded-3xl flex flex-col items-center md:block text-center md:text-left">
                 <p className="text-gray-500 text-xs md:text-sm md:mb-1">Spent</p>
                 <div className="flex items-center gap-1 md:gap-2 justify-center md:justify-start">
-                  <Wallet className="text-green-600 w-4 h-4 md:w-6 md:h-6" />
+                  <Wallet className="text-[#5abc8b] w-4 h-4 md:w-6 md:h-6" />
                   <span className="text-xl md:text-3xl font-bold text-dark">₹{totalPurchaseAmount}</span>
                 </div>
               </div>
@@ -384,7 +384,7 @@ const Customers: React.FC<CustomersProps> = ({ onEditBill }) => {
                           className="border border-gray-100 rounded-2xl p-4 md:p-5 hover:shadow-md transition-shadow bg-white flex flex-col md:flex-row justify-between items-start md:items-center gap-3 group cursor-pointer"
                         >
                           <div className="flex items-start gap-4 w-full md:w-auto">
-                            <div className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 ${isFullyDelivered ? 'bg-green-100 text-green-600' : 'bg-red-50 text-red-600'}`}>
+                            <div className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 ${isFullyDelivered ? 'bg-green-100 text-[#5abc8b]' : 'bg-red-50 text-red-600'}`}>
                               <FileText size={20} />
                             </div>
                             <div className="flex-1">
@@ -404,7 +404,7 @@ const Customers: React.FC<CustomersProps> = ({ onEditBill }) => {
                           </div>
                           <div className="flex flex-row md:flex-col items-center md:items-end justify-between w-full md:w-auto gap-2 md:gap-1 pl-0 md:pl-0 mt-2 md:mt-0 border-t md:border-t-0 border-dashed border-gray-100 pt-2 md:pt-0">
                             <div className="font-bold text-dark text-lg hidden md:block">₹{bill.totalAmount}</div>
-                            <span className={`text-[10px] px-2 py-1 rounded-md font-bold uppercase tracking-wide w-full md:w-auto text-center ${isFullyDelivered ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-600'
+                            <span className={`text-[10px] px-2 py-1 rounded-md font-bold uppercase tracking-wide w-full md:w-auto text-center ${isFullyDelivered ? 'bg-green-100 text-[#5abc8b]' : 'bg-red-100 text-red-600'
                               }`}>
                               {isFullyDelivered ? 'DELIVERED' : `${pendingCount} PENDING`}
                             </span>

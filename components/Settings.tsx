@@ -88,7 +88,7 @@ const Settings: React.FC<SettingsProps> = ({ shopProfile, onLogout }) => {
   const getStatusBadge = (status?: string) => {
     switch (status) {
       case 'active':
-        return <span className="px-3 py-1 rounded-full bg-green-100 text-green-700 text-xs font-bold">Active</span>;
+        return <span className="px-3 py-1 rounded-full bg-green-100 text-[#5abc8b] text-xs font-bold">Active</span>;
       case 'trial':
         return <span className="px-3 py-1 rounded-full bg-amber-100 text-amber-700 text-xs font-bold">Trial</span>;
       case 'expired':
@@ -334,7 +334,7 @@ const Settings: React.FC<SettingsProps> = ({ shopProfile, onLogout }) => {
             <button
               onClick={() => store.updateSettings({ defaultBillingMode: 'DP' })}
               className={`px-4 py-2 rounded-lg text-xs font-bold transition-all ${defaultBillingMode === 'DP'
-                ? 'bg-green-600 text-white shadow-sm'
+                ? 'bg-[#5abc8b] text-white shadow-sm'
                 : 'text-gray-500 hover:text-dark'
                 }`}
             >
@@ -347,7 +347,7 @@ const Settings: React.FC<SettingsProps> = ({ shopProfile, onLogout }) => {
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 p-4 bg-green-50 rounded-2xl border border-green-100 mt-4">
           <div className="flex items-start gap-3">
             <div className="w-10 h-10 rounded-full bg-green-100 flex items-center justify-center flex-shrink-0">
-              <MessageCircle size={20} className="text-green-600" />
+              <MessageCircle size={20} className="text-[#5abc8b]" />
             </div>
             <div>
               <h4 className="font-bold text-dark text-sm mb-1">WhatsApp Notifications</h4>
@@ -361,7 +361,7 @@ const Settings: React.FC<SettingsProps> = ({ shopProfile, onLogout }) => {
               setWhatsappEnabled(newValue);
               store.updateSettings({ whatsappEnabled: newValue });
             }}
-            className={`relative inline-flex h-8 w-14 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 ${whatsappEnabled ? 'bg-green-600' : 'bg-gray-300'
+            className={`relative inline-flex h-8 w-14 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 ${whatsappEnabled ? 'bg-[#5abc8b]' : 'bg-gray-300'
               }`}
           >
             <span

@@ -39,6 +39,7 @@ const App: React.FC = () => {
   const [splashDone, setSplashDone] = useState(false);
   const [fadeOut, setFadeOut] = useState(false);
   const [splashHidden, setSplashHidden] = useState(false);
+  const svgObjectRef = useRef<HTMLObjectElement>(null);
   const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
   const [isShopManagerOpen, setIsShopManagerOpen] = useState(false);
   const profileMenuRef = useRef<HTMLDivElement>(null);
@@ -57,6 +58,24 @@ const App: React.FC = () => {
       setSplashDone(true);
     }, 3500);
     return () => clearTimeout(splashTimer);
+  }, []);
+
+  // Pause SVG animation after one cycle (~4.67s) to prevent looping
+  useEffect(() => {
+    const animTimer = setTimeout(() => {
+      try {
+        const obj = svgObjectRef.current;
+        if (obj && obj.contentDocument) {
+          const svgEl = obj.contentDocument.querySelector('svg');
+          if (svgEl) {
+            svgEl.pauseAnimations();
+          }
+        }
+      } catch (e) {
+        // Cross-origin or not loaded yet — ignore
+      }
+    }, 4700); // SVG animation duration is 4.6666667s
+    return () => clearTimeout(animTimer);
   }, []);
 
   // Trigger fade-out when both auth and splash are done, then hide after animation
@@ -311,7 +330,9 @@ const App: React.FC = () => {
   };
 
   const urlParams = new URLSearchParams(window.location.search);
-  const isPublicBillView = urlParams.has('billId');
+  const pathParts = window.location.pathname.split('/').filter(Boolean);
+  const isCustomPublicBillPath = pathParts.length >= 3 && pathParts[0] === 'instabill';
+  const isPublicBillView = urlParams.has('billId') || isCustomPublicBillPath;
 
   const getActiveViewContent = () => {
     if (isPublicBillView) return <PublicInvoiceViewer />;
@@ -361,12 +382,16 @@ const App: React.FC = () => {
                 <img src="/Logo-Icon.png" alt="Instabill" className="h-7 md:hidden object-contain" />
               )}
               <h2 className="text-lg md:text-xl font-bold text-[#111617] capitalize truncate">
-                {activeView.replace('-', ' ')}
+                {({
+                  'subscription-extend': 'Upgrade Plan',
+                  'subscription-extend-page': 'Extend Subscription',
+                  'subscription-manager': 'Subscription Manager',
+                } as Record<string, string>)[activeView] || activeView.replace('-', ' ')}
               </h2>
               {shopProfile && activeView === 'dashboard' && (
-                <div className="hidden md:flex items-center gap-1.5 px-3 py-1 bg-[#DAF4D7] rounded-full">
-                  <Store size={13} className="text-[#21776A]" />
-                  <span className="text-xs font-bold text-[#21776A] truncate max-w-[140px]">{shopProfile.shopName}</span>
+                <div className="hidden md:flex items-center gap-1.5 px-3 py-1 bg-[#e7faff] rounded-full">
+                  <Store size={13} className="text-[#00747B]" />
+                  <span className="text-xs font-bold text-[#00747B] truncate max-w-[140px]">{shopProfile.shopName}</span>
                 </div>
               )}
             </div>
@@ -396,7 +421,7 @@ const App: React.FC = () => {
                   <div className="md:hidden relative" ref={shopManagerRef}>
                     <button
                       onClick={() => { setIsShopManagerOpen(!isShopManagerOpen); setIsProfileMenuOpen(false); }}
-                      className="h-8 px-3.5 bg-gradient-to-r from-[#88DE7D] to-[#21776A] text-white rounded-xl flex items-center justify-center gap-1 shadow-[0_2px_8px_rgba(33,119,106,0.15)] active:scale-95 transition-all text-[11px] font-bold whitespace-nowrap"
+                      className="h-8 px-3.5 bg-[#5abc8b] text-white rounded-xl flex items-center justify-center gap-1 shadow-[0_2px_8px_rgba(90,188,139,0.25)] active:scale-95 transition-all text-[11px] font-bold whitespace-nowrap"
                       title="Manager"
                     >
                       <LayoutList size={13} strokeWidth={2.5} />
@@ -415,9 +440,9 @@ const App: React.FC = () => {
                         >
                           <button
                             onClick={() => { setActiveView('payment-manager'); setIsShopManagerOpen(false); }}
-                            className="w-full flex items-center gap-3 px-4 py-3 text-sm text-[#111617] hover:bg-[#F3F5F2] transition-colors text-left"
+                            className="w-full flex items-center gap-3 px-4 py-3 text-sm text-[#111617] hover:bg-gray-50 transition-colors text-left"
                           >
-                            <div className="w-8 h-8 rounded-lg bg-[#DAF4D7] flex items-center justify-center text-[#21776A]">
+                            <div className="w-8 h-8 rounded-lg bg-[#e7faff] flex items-center justify-center text-[#00747B]">
                               <Bell size={18} />
                             </div>
                             <span className="font-medium">Payment Manager</span>
@@ -425,9 +450,9 @@ const App: React.FC = () => {
 
                           <button
                             onClick={() => { setActiveView('product-manager'); setIsShopManagerOpen(false); }}
-                            className="w-full flex items-center gap-3 px-4 py-3 text-sm text-[#111617] hover:bg-[#F3F5F2] transition-colors text-left"
+                            className="w-full flex items-center gap-3 px-4 py-3 text-sm text-[#111617] hover:bg-gray-50 transition-colors text-left"
                           >
-                            <div className="w-8 h-8 rounded-lg bg-[#DAF4D7] flex items-center justify-center text-[#21776A]">
+                            <div className="w-8 h-8 rounded-lg bg-[#e7faff] flex items-center justify-center text-[#00747B]">
                               <Package size={18} />
                             </div>
                             <span className="font-medium">Product Manager</span>
@@ -435,9 +460,9 @@ const App: React.FC = () => {
 
                           <button
                             onClick={() => { setActiveView('sp-manager'); setIsShopManagerOpen(false); }}
-                            className="w-full flex items-center gap-3 px-4 py-3 text-sm text-[#111617] hover:bg-[#F3F5F2] transition-colors text-left"
+                            className="w-full flex items-center gap-3 px-4 py-3 text-sm text-[#111617] hover:bg-gray-50 transition-colors text-left"
                           >
-                            <div className="w-8 h-8 rounded-lg bg-[#DAF4D7] flex items-center justify-center text-[#21776A]">
+                            <div className="w-8 h-8 rounded-lg bg-[#e7faff] flex items-center justify-center text-[#00747B]">
                               <LayoutList size={18} />
                             </div>
                             <span className="font-medium">SP Manager</span>
@@ -470,7 +495,7 @@ const App: React.FC = () => {
                         >
                           <div className="px-5 pt-5 pb-4 border-b border-gray-100">
                             <div className="flex items-center gap-3">
-                              <div className="w-10 h-10 rounded-full bg-[#DAF4D7] flex items-center justify-center text-[#21776A] shrink-0">
+                              <div className="w-10 h-10 rounded-full bg-[#e7faff] flex items-center justify-center text-[#00747B] shrink-0">
                                 <User size={20} strokeWidth={2} />
                               </div>
                               <div className="min-w-0">
@@ -608,7 +633,13 @@ const App: React.FC = () => {
       {!splashHidden && (
         <div className={`splash-screen ${fadeOut ? 'splash-fade-out' : ''}`}>
           <div className="splash-logo-container">
-            <img src="/LogoAnimation.svg" alt="Instabill Logo Animation" />
+            <object
+              ref={svgObjectRef}
+              type="image/svg+xml"
+              data="/LogoAnimation.svg"
+              aria-label="Instabill Logo Animation"
+              style={{ width: '100%', height: '100%' }}
+            />
           </div>
           <div className="splash-progress-track">
             <div className="splash-progress-fill"></div>

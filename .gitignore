@@ -22,3 +22,19 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Environment variables (API keys)
+.env
+.env.local
+.env.*.local
+
+# Service Keys
+serviceAccountKey.json
+
+# Temporary files
+diff.txt
+diff_billing.txt
+log.txt
+
+# Antigravity agents
+.agents/

@@ -93,7 +93,7 @@ const DailyStatsModal: React.FC<DailyStatsModalProps> = ({ isOpen, onClose, stat
             }
 
             .report-badge {
-              background: #12332A;
+              background: #02575c;
               color: white;
               padding: 6px 12px;
               border-radius: 6px;
@@ -128,7 +128,7 @@ const DailyStatsModal: React.FC<DailyStatsModalProps> = ({ isOpen, onClose, stat
             
             .stats-table .value.revenue {
               font-size: 28px;
-              color: #12332A;
+              color: #02575c;
             }
             
             .stats-table .value.sp { color: #7e22ce; }
@@ -312,7 +312,7 @@ const DailyStatsModal: React.FC<DailyStatsModalProps> = ({ isOpen, onClose, stat
       <div className="bg-white rounded-2xl w-full max-w-sm shadow-2xl animate-scale-in flex flex-col m-4">
         {/* Header - Compact */}
         <div className="flex-none flex items-center justify-between p-4 py-3 border-b border-gray-100">
-          <h2 className="text-lg font-bold text-[#12332A]">Daily Stats Summary</h2>
+          <h2 className="text-lg font-bold text-[#02575c]">Daily Stats Summary</h2>
           <button
             onClick={onClose}
             className="p-1.5 hover:bg-gray-100 rounded-full transition-colors"
@@ -336,16 +336,16 @@ const DailyStatsModal: React.FC<DailyStatsModalProps> = ({ isOpen, onClose, stat
                 {/* Revenue - Key Metric */}
                 <div className="stat-row flex justify-between items-center py-1.5 border-b border-gray-50">
                   <span className="stat-label text-xs text-gray-600 font-bold uppercase tracking-wide">Total Revenue</span>
-                  <span className="stat-value highlight text-lg font-bold text-[#12332A]">₹{stats.revenue.toLocaleString()}</span>
+                  <span className="stat-value highlight text-lg font-bold text-[#02575c]">₹{stats.revenue.toLocaleString()}</span>
                 </div>
 
                 {/* Collections Group */}
                 <div className="bg-gray-50 rounded-lg p-2 flex gap-4 my-1">
                   <div className="flex-1">
                     <span className="flex items-center gap-1 text-[10px] text-gray-500 uppercase font-bold mb-0.5">
-                      <Banknote size={12} className="text-green-600" /> Cash
+                      <Banknote size={12} className="text-[#5abc8b]" /> Cash
                     </span>
-                    <div className="text-sm font-bold text-green-700">₹{stats.cashTotal.toLocaleString()}</div>
+                    <div className="text-sm font-bold text-[#5abc8b]">₹{stats.cashTotal.toLocaleString()}</div>
                   </div>
                   <div className="w-px bg-gray-200"></div>
                   <div className="flex-1">
@@ -383,11 +383,11 @@ const DailyStatsModal: React.FC<DailyStatsModalProps> = ({ isOpen, onClose, stat
                     </div>
 
                     <div className="stat-row flex justify-between items-center py-2 bg-[#BCE32D]/20 rounded-lg px-3 -mx-2 mt-1">
-                      <span className="stat-label text-xs font-bold text-[#12332A] flex items-center gap-1.5">
-                        <Wallet size={14} className="text-[#12332A]" />
+                      <span className="stat-label text-xs font-bold text-[#02575c] flex items-center gap-1.5">
+                        <Wallet size={14} className="text-[#02575c]" />
                         Net Cash in Hand
                       </span>
-                      <span className="stat-value netcash text-lg font-bold text-[#12332A]">₹{(stats.netCash ?? 0).toLocaleString()}</span>
+                      <span className="stat-value netcash text-lg font-bold text-[#02575c]">₹{(stats.netCash ?? 0).toLocaleString()}</span>
                     </div>
                   </>
                 )}
@@ -405,7 +405,7 @@ const DailyStatsModal: React.FC<DailyStatsModalProps> = ({ isOpen, onClose, stat
         <div className="flex-none p-4 pt-0">
           <button
             onClick={handlePrint}
-            className="w-full flex items-center justify-center gap-2 bg-[#12332A] hover:bg-[#1a4438] text-white font-bold py-3 rounded-xl shadow-md transition-all active:scale-[0.98] text-sm"
+            className="w-full flex items-center justify-center gap-2 bg-[#02575c] hover:bg-[#1a4438] text-white font-bold py-3 rounded-xl shadow-md transition-all active:scale-[0.98] text-sm"
           >
             <Printer size={18} />
             Print Stats

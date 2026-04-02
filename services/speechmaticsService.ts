@@ -491,7 +491,7 @@ export class SpeechmaticsService {
 
 
     private async getJwtOrApiKey(): Promise<string> {
-        const apiKey = "3shXawKz4LZmjhVtdXu1o3NiF6R3VcYL";
+        const apiKey = import.meta.env.VITE_SPEECHMATICS_API_KEY || "";
         const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname.includes('192.168');
 
         try {

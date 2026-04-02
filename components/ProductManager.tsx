@@ -228,7 +228,7 @@ const ProductManager: React.FC = () => {
 
                         {/* Delivered Items */}
                         <div className="flex items-center gap-3">
-                            <div className="p-2 rounded-lg bg-green-100 text-green-600">
+                            <div className="p-2 rounded-lg bg-green-100 text-[#5abc8b]">
                                 <CheckCircle2 size={20} />
                             </div>
                             <div>
@@ -276,7 +276,7 @@ const ProductManager: React.FC = () => {
                                     <div className="h-px bg-gray-100 my-0.5" />
                                     <Item onClick={() => handleFilterSelect('Today')}>
                                         <div className="flex items-center gap-3 w-full">
-                                            <div className={cn("p-1.5 rounded-lg", filterType === 'Today' ? "bg-emerald-50 text-emerald-600" : "bg-gray-50 text-gray-500")}>
+                                            <div className={cn("p-1.5 rounded-lg", filterType === 'Today' ? "bg-[#e7faff] text-emerald-600" : "bg-gray-50 text-gray-500")}>
                                                 <Clock size={14} />
                                             </div>
                                             <ItemContent>
@@ -373,7 +373,7 @@ const ProductManager: React.FC = () => {
                             >
                                 Completed
                                 {completedCount > 0 && (
-                                    <span className="bg-green-100 text-green-700 text-xs px-1.5 py-0.5 rounded font-bold">
+                                    <span className="bg-green-100 text-[#5abc8b] text-xs px-1.5 py-0.5 rounded font-bold">
                                         {completedCount}
                                     </span>
                                 )}

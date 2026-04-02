@@ -1639,22 +1639,22 @@ const Billing: React.FC<BillingProps> = ({ tabs, setTabs, activeTabId, setActive
                 <div className="flex items-center gap-3 px-3 py-2.5">
                   {/* Left: Product Info */}
                   <div className="flex-1 min-w-0">
-                    <h4 className={`font-bold text-[13px] leading-tight truncate ${isSelected ? 'text-[#21776A]' : 'text-[#111617]'}`}>
+                    <h4 className={`font-bold text-[13px] leading-tight truncate ${isSelected ? 'text-[#00747B]' : 'text-[#02575c]'}`}>
                       {product.name}
                     </h4>
                     <div className="flex items-center gap-1.5 mt-1 flex-wrap">
                       {/* DP Price Pill */}
-                      <div className={`px-2 py-[2px] rounded-md text-[10px] font-bold ${isSelected ? 'bg-[#88DE7D] text-[#111617]' : 'bg-[#DAF4D7] text-[#111617]'}`}>
+                      <div className={`px-2 py-[2px] rounded-md text-[10px] font-bold ${isSelected ? 'bg-[#88DE7D] text-[#02575c]' : 'bg-[#DAF4D7] text-[#02575c]'}`}>
                         DP ₹{product.dp}
                       </div>
                       {/* SP Pill */}
                       <div className="bg-[#F3F5F2] px-1.5 py-[2px] rounded-md">
-                        <span className="text-[10px] font-semibold text-[#21776A]">SP {product.sp}</span>
+                        <span className="text-[10px] font-semibold text-[#00747B]">SP {product.sp}</span>
                       </div>
                       {/* MRP */}
                       <span className="text-[10px] text-gray-400 font-medium">MRP ₹{product.mrp}</span>
                       {/* Stock */}
-                      <span className={`text-[10px] font-semibold ${isLowStock ? 'text-red-500' : 'text-[#21776A]'}`}>
+                      <span className={`text-[10px] font-semibold ${isLowStock ? 'text-red-500' : 'text-[#00747B]'}`}>
                         {isLowStock ? (product.stock <= 0 ? `${product.stock} pcs` : `${product.stock} pcs`) : `${product.stock} pcs`}
                       </span>
                     </div>
@@ -1666,7 +1666,7 @@ const Billing: React.FC<BillingProps> = ({ tabs, setTabs, activeTabId, setActive
                       <div className="flex items-center bg-[#F3F5F2] rounded-xl h-[36px] overflow-hidden">
                         <button
                           onClick={() => handleUpdateQuantity(product.id, -1)}
-                          className="w-9 h-full flex items-center justify-center text-[#111617]/60 active:bg-[#DAF4D7] transition-colors text-[18px] font-medium"
+                          className="w-9 h-full flex items-center justify-center text-[#02575c]/60 active:bg-[#DAF4D7] transition-colors text-[18px] font-medium"
                         >
                           −
                         </button>
@@ -1687,11 +1687,11 @@ const Billing: React.FC<BillingProps> = ({ tabs, setTabs, activeTabId, setActive
                           }}
                           onFocus={(e) => e.target.select()}
                           onClick={(e) => e.stopPropagation()}
-                          className="w-8 text-center font-bold text-[#111617] text-[14px] bg-transparent focus:outline-none focus:bg-[#DAF4D7] rounded-sm z-10 p-0"
+                          className="w-8 text-center font-bold text-[#02575c] text-[14px] bg-transparent focus:outline-none focus:bg-[#DAF4D7] rounded-sm z-10 p-0"
                         />
                         <button
                           onClick={() => handleUpdateQuantity(product.id, 1)}
-                          className="w-9 h-full flex items-center justify-center text-[#111617]/60 active:bg-[#DAF4D7] transition-colors text-[18px] font-medium"
+                          className="w-9 h-full flex items-center justify-center text-[#02575c]/60 active:bg-[#DAF4D7] transition-colors text-[18px] font-medium"
                         >
                           +
                         </button>
@@ -1708,7 +1708,7 @@ const Billing: React.FC<BillingProps> = ({ tabs, setTabs, activeTabId, setActive
                           e.stopPropagation();
                           handleAddItem(product.id);
                         }}
-                        className="w-[38px] h-[38px] bg-[#DAF4D7] text-[#21776A] rounded-xl flex items-center justify-center active:scale-90 active:bg-[#88DE7D] transition-all duration-150"
+                        className="w-[38px] h-[38px] bg-[#DAF4D7] text-[#00747B] rounded-xl flex items-center justify-center active:scale-90 active:bg-[#88DE7D] transition-all duration-150"
                       >
                         <Plus size={20} strokeWidth={2.5} />
                       </button>
@@ -1733,7 +1733,7 @@ const Billing: React.FC<BillingProps> = ({ tabs, setTabs, activeTabId, setActive
               <div
                 key={product.id}
                 className={`rounded-2xl border transition-shadow duration-200 group relative flex flex-col overflow-hidden transform-none hover:transform-none ${isSelected
-                  ? 'bg-emerald-50/50 border-emerald-500 ring-1 ring-emerald-500 shadow-md'
+                  ? 'bg-[#e7faff]/50 border-[#e7faff]0 ring-1 ring-[#e7faff]0 shadow-md'
                   : 'bg-white border-gray-100 hover:border-emerald-200 hover:shadow-lg'
                   } ${isHighlighted ? 'ring-2 ring-blue-500' : ''}`}
                 onClick={() => {
@@ -1763,7 +1763,7 @@ const Billing: React.FC<BillingProps> = ({ tabs, setTabs, activeTabId, setActive
 
                 {/* Product Info */}
                 <div className="px-1.5 pb-1.5 flex flex-col flex-1">
-                  <h4 className={`font-bold text-[13px] leading-tight mb-1 line-clamp-2 min-h-[1.75rem] ${isSelected ? 'text-emerald-900' : 'text-gray-800'}`}>
+                  <h4 className={`font-bold text-[13px] leading-tight mb-1 line-clamp-2 min-h-[1.75rem] ${isSelected ? 'text-[#02575c]' : 'text-gray-800'}`}>
                     {product.name}
                   </h4>
 
@@ -1794,7 +1794,7 @@ const Billing: React.FC<BillingProps> = ({ tabs, setTabs, activeTabId, setActive
                       >
                         <button
                           onClick={() => handleUpdateQuantity(product.id, -1)}
-                          className="w-6 h-full flex items-center justify-center text-emerald-600 hover:bg-emerald-50 rounded-l-lg transition-colors text-base font-bold pb-1"
+                          className="w-6 h-full flex items-center justify-center text-emerald-600 hover:bg-[#e7faff] rounded-l-lg transition-colors text-base font-bold pb-1"
                           tabIndex={-1}
                         >
                           −
@@ -1832,11 +1832,11 @@ const Billing: React.FC<BillingProps> = ({ tabs, setTabs, activeTabId, setActive
                           }}
                           onClick={(e) => e.stopPropagation()}
                           onFocus={(e) => e.target.select()}
-                          className="w-8 text-center font-bold text-gray-900 text-[13px] h-full focus:outline-none focus:bg-emerald-50 rounded-none z-10 p-0"
+                          className="w-8 text-center font-bold text-gray-900 text-[13px] h-full focus:outline-none focus:bg-[#e7faff] rounded-none z-10 p-0"
                         />
                         <button
                           onClick={() => handleUpdateQuantity(product.id, 1)}
-                          className="w-6 h-full flex items-center justify-center text-emerald-600 hover:bg-emerald-50 rounded-r-lg transition-colors text-base font-bold pb-1"
+                          className="w-6 h-full flex items-center justify-center text-emerald-600 hover:bg-[#e7faff] rounded-r-lg transition-colors text-base font-bold pb-1"
                           tabIndex={-1}
                         >
                           +
@@ -1848,7 +1848,7 @@ const Billing: React.FC<BillingProps> = ({ tabs, setTabs, activeTabId, setActive
                           e.stopPropagation();
                           handleAddItem(product.id);
                         }}
-                        className="w-7 h-7 bg-emerald-50 text-emerald-600 rounded-lg flex items-center justify-center hover:bg-emerald-500 hover:text-white transition-all duration-300 shadow-sm"
+                        className="w-7 h-7 bg-[#e7faff] text-emerald-600 rounded-lg flex items-center justify-center hover:bg-[#e7faff]0 hover:text-white transition-all duration-300 shadow-sm"
                       >
                         <Plus size={16} strokeWidth={2.5} />
                       </button>
@@ -1869,13 +1869,13 @@ const Billing: React.FC<BillingProps> = ({ tabs, setTabs, activeTabId, setActive
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2">
                 <span className="text-[11px] font-semibold text-gray-400">{activeBill.items.length} items</span>
-                <div className="bg-[#DAF4D7] text-[#21776A] font-bold text-[10px] px-1.5 py-0.5 rounded-md">SP {Math.round(activeBill.totalSp * 100) / 100}</div>
+                <div className="bg-[#DAF4D7] text-[#00747B] font-bold text-[10px] px-1.5 py-0.5 rounded-md">SP {Math.round(activeBill.totalSp * 100) / 100}</div>
               </div>
-              <div className="text-[#111617] font-black text-lg leading-tight">₹{activeBill.totalAmount.toLocaleString()}</div>
+              <div className="text-[#02575c] font-black text-lg leading-tight">₹{activeBill.totalAmount.toLocaleString()}</div>
             </div>
             <button
               onClick={() => setIsAddProductOpen(false)}
-              className="px-8 py-3 rounded-xl bg-[#88DE7D] text-[#111617] font-bold text-[15px] active:scale-[0.97] transition-all shadow-sm"
+              className="px-8 py-3 rounded-xl bg-[#88DE7D] text-[#02575c] font-bold text-[15px] active:scale-[0.97] transition-all shadow-sm"
             >
               Done
             </button>
@@ -2159,7 +2159,7 @@ const Billing: React.FC<BillingProps> = ({ tabs, setTabs, activeTabId, setActive
                 className={`
                   relative flex items-center gap-2 px-5 py-2.5 rounded-full cursor-pointer transition-all select-none
                   ${isActive
-                    ? 'bg-white shadow-[0_4px_12px_rgba(0,0,0,0.05)] text-[#111617] font-bold'
+                    ? 'bg-white shadow-[0_4px_12px_rgba(0,0,0,0.05)] text-[#02575c] font-bold'
                     : 'text-gray-400 font-medium hover:text-gray-600'
                   }
                 `}
@@ -2188,7 +2188,7 @@ const Billing: React.FC<BillingProps> = ({ tabs, setTabs, activeTabId, setActive
           {/* New Tab Button */}
           <button
             onClick={handleNewTab}
-            className="w-10 h-10 flex items-center justify-center rounded-full bg-[#88DE7D] text-[#111617] hover:bg-[#7cd472] transition-all shrink-0"
+            className="w-10 h-10 flex items-center justify-center rounded-full bg-[#88DE7D] text-[#02575c] hover:bg-[#7cd472] transition-all shrink-0"
           >
             <Plus size={22} strokeWidth={2.5} />
           </button>
@@ -2206,55 +2206,59 @@ const Billing: React.FC<BillingProps> = ({ tabs, setTabs, activeTabId, setActive
           {/* Right Side Panel - Bill Items & Controls (Mobile Only - Hidden on Desktop) */}
           <div className="flex lg:hidden flex-1 flex-col gap-2.5 md:gap-6 h-full min-w-0 animate-slide-up opacity-0 [animation-delay:100ms]">
 
-            {/* DP/MRP Toggle - Mobile - Centered above search */}
-            <div className="md:hidden flex justify-center">
-              <div className="relative h-[34px] bg-white rounded-full flex items-center p-[2.5px] w-[220px] shadow-sm border border-gray-100/50">
+            {/* Mobile Header Panel: Search + Hamburger + DP/MRP Toggle in one card */}
+            <div className="mx-3 md:hidden bg-white rounded-[20px] shadow-sm border border-gray-100/60 p-2.5 flex flex-col gap-2" ref={searchWrapperRef}>
+              {/* Top Row: Customer Search + Hamburger */}
+              <div className="flex items-center gap-2.5">
+                {/* Customer Search Trigger */}
+                <div
+                  className="flex-1 min-w-0 bg-[#F3F5F2] rounded-[14px] h-[46px] flex items-center cursor-pointer active:opacity-70 transition-opacity px-4 gap-3"
+                  onClick={() => setIsMobileCustomerSearchOpen(true)}
+                >
+                  <Search size={18} strokeWidth={2} className="text-[#02575C]/40 shrink-0" />
+                  <div className="text-[15px] font-medium text-[#02575C] truncate select-none">
+                    {activeBill.customerName || "Search Customer"}
+                  </div>
+                </div>
+
+                {/* Hamburger Tab Switcher Button */}
+                <button
+                  onClick={() => setIsMobileTabSwitcherOpen(true)}
+                  className="relative w-[46px] h-[46px] bg-[#E7FAFF] rounded-[14px] flex items-center justify-center shrink-0 active:scale-95 transition-transform"
+                >
+                  <Menu size={22} strokeWidth={2} className="text-[#02575C]" />
+                  {/* Badge showing tab count */}
+                  {tabs.length > 1 && (
+                    <div className="absolute -top-1 -right-1 w-[20px] h-[20px] bg-[#02575C] rounded-full flex items-center justify-center border-[2.5px] border-white">
+                      <span className="text-white text-[10px] font-bold leading-none">{tabs.length}</span>
+                    </div>
+                  )}
+                </button>
+              </div>
+
+              {/* Bottom Row: DP/MRP Toggle - Full width */}
+              <div className="relative h-[38px] bg-[#F3F5F2] rounded-full flex items-center p-[3px]">
                 {/* Active indicator */}
                 <div
-                  className={`absolute top-[2.5px] bottom-[2.5px] w-[107.5px] rounded-full transition-all duration-300 ease-out ${activeBill.billingType === 'DP' ? 'bg-[#02575C]' : 'bg-[#EF4444]'}`}
-                  style={{ left: activeBill.billingType === 'DP' ? '2.5px' : 'calc(100% - 110px)' }}
+                  className={`absolute top-[3px] bottom-[3px] rounded-full transition-all duration-300 ease-out ${activeBill.billingType === 'DP' ? 'bg-[#02575C]' : 'bg-[#EF4444]'}`}
+                  style={{ 
+                    width: 'calc(50% - 3px)',
+                    left: activeBill.billingType === 'DP' ? '3px' : 'calc(50%)'
+                  }}
                 />
                 <button
                   onClick={() => handlePricingModeChange('DP')}
-                  className={`relative z-10 flex-1 h-full flex items-center justify-center text-[13px] font-medium transition-all tracking-wide leading-none ${activeBill.billingType === 'DP' ? 'text-white' : 'text-[#797979]'}`}
+                  className={`relative z-10 flex-1 h-full flex items-center justify-center text-[13px] font-semibold transition-all tracking-wide leading-none ${activeBill.billingType === 'DP' ? 'text-white' : 'text-[#797979]'}`}
                 >
                   DP Mode
                 </button>
                 <button
                   onClick={() => handlePricingModeChange('MRP')}
-                  className={`relative z-10 flex-1 h-full flex items-center justify-center text-[13px] font-medium transition-all tracking-wide leading-none ${activeBill.billingType === 'MRP' ? 'text-white' : 'text-[#797979]'}`}
+                  className={`relative z-10 flex-1 h-full flex items-center justify-center text-[13px] font-semibold transition-all tracking-wide leading-none ${activeBill.billingType === 'MRP' ? 'text-white' : 'text-[#797979]'}`}
                 >
                   MRP Mode
                 </button>
               </div>
-            </div>
-
-            {/* Mobile Header: Customer Search + Hamburger */}
-            <div className="mx-3 md:hidden flex items-center gap-2.5" ref={searchWrapperRef}>
-              {/* Customer Search Trigger - White Pill */}
-              <div
-                className="flex-1 min-w-0 bg-white rounded-[15px] h-[48px] flex items-center cursor-pointer active:opacity-70 transition-opacity px-5 gap-3 shadow-sm border border-gray-50/50"
-                onClick={() => setIsMobileCustomerSearchOpen(true)}
-              >
-                <Search size={18} strokeWidth={2} className="text-[#8391A1] shrink-0" />
-                <div className="text-[15px] font-medium text-[#5D858F] truncate select-none">
-                  {activeBill.customerName || "Search Customer"}
-                </div>
-              </div>
-
-              {/* Hamburger Tab Switcher Button */}
-              <button
-                onClick={() => setIsMobileTabSwitcherOpen(true)}
-                className="relative w-[48px] h-[48px] bg-white rounded-[15px] flex items-center justify-center shrink-0 active:scale-95 transition-transform shadow-sm border border-gray-50/50"
-              >
-                <Menu size={22} strokeWidth={2} className="text-[#3A4A5A]" />
-                {/* Badge showing tab count */}
-                {tabs.length > 1 && (
-                  <div className="absolute -top-1 -right-1 w-[20px] h-[20px] bg-[#02575C] rounded-full flex items-center justify-center border-[2.5px] border-[#F3F5F2]">
-                    <span className="text-white text-[10px] font-bold leading-none">{tabs.length}</span>
-                  </div>
-                )}
-              </button>
             </div>
 
             {/* Desktop-only original search bar + toggle (unchanged) */}
@@ -2272,8 +2276,8 @@ const Billing: React.FC<BillingProps> = ({ tabs, setTabs, activeTabId, setActive
                 <button
                   onClick={() => handlePricingModeChange('DP')}
                   className={`px-4 py-2 rounded-full text-[13px] font-bold transition-all relative z-10 ${activeBill.billingType === 'DP'
-                    ? 'bg-[#21776A] text-white shadow-md'
-                    : 'text-[#848c9e] hover:text-[#111617]/80'
+                    ? 'bg-[#00747B] text-white shadow-md'
+                    : 'text-[#848c9e] hover:text-[#02575c]/80'
                     }`}
                 >
                   DP
@@ -2282,7 +2286,7 @@ const Billing: React.FC<BillingProps> = ({ tabs, setTabs, activeTabId, setActive
                   onClick={() => handlePricingModeChange('MRP')}
                   className={`px-3.5 py-2 rounded-full text-[13px] font-bold transition-all relative z-10 ${activeBill.billingType === 'MRP'
                     ? 'bg-red-500 text-white shadow-md'
-                    : 'text-[#848c9e] hover:text-[#111617]/80'
+                    : 'text-[#848c9e] hover:text-[#02575c]/80'
                     }`}
                 >
                   MRP
@@ -2365,15 +2369,15 @@ const Billing: React.FC<BillingProps> = ({ tabs, setTabs, activeTabId, setActive
 
                               {/* Center: Product Details */}
                               <div className="flex-1 min-w-0 flex flex-col justify-center gap-1">
-                                <h4 className="font-semibold text-[#111617] text-[13px] leading-tight truncate">{item.name}</h4>
+                                <h4 className="font-semibold text-[#02575c] text-[13px] leading-tight truncate">{item.name}</h4>
                                 <div className="flex items-center gap-2">
                                   {/* SP Pill */}
                                   <div className={`w-[64px] py-[2px] rounded-full flex items-center justify-center shrink-0 ${isPending ? 'bg-[#FFE7E7]' : 'bg-[#E7FAFF]'}`}>
-                                    <span className={`text-[10px] font-medium whitespace-nowrap ${isPending ? 'text-[#353535]' : 'text-[#21776A]'}`}>SP {item.sp}</span>
+                                    <span className={`text-[10px] font-medium whitespace-nowrap ${isPending ? 'text-[#353535]' : 'text-[#00747B]'}`}>SP {item.sp}</span>
                                   </div>
                                   {/* DP/MRP Pill */}
                                   <div className="bg-[#F0F0F0] w-[64px] py-[2px] rounded-full flex items-center justify-center shrink-0">
-                                    <span className="text-[10px] font-medium text-[#111617] whitespace-nowrap">
+                                    <span className="text-[10px] font-medium text-[#02575c] whitespace-nowrap">
                                       {activeBill.billingType === 'MRP' ? 'MRP ' : 'DP '}
                                       {activeBill.billingType === 'MRP' ? item.mrp : item.dp}
                                     </span>
@@ -2387,7 +2391,7 @@ const Billing: React.FC<BillingProps> = ({ tabs, setTabs, activeTabId, setActive
                                 <div className="flex items-center bg-[#F0F0F0] rounded-[10px] h-[32px] w-[72px]">
                                   <button
                                     onClick={() => handleUpdateQuantity(item.id, -1)}
-                                    className="flex-1 h-full flex items-center justify-center text-[#111617] active:bg-black/5 transition-colors text-[18px] font-medium leading-none"
+                                    className="flex-1 h-full flex items-center justify-center text-[#02575c] active:bg-black/5 transition-colors text-[18px] font-medium leading-none"
                                   >
                                     −
                                   </button>
@@ -2404,11 +2408,11 @@ const Billing: React.FC<BillingProps> = ({ tabs, setTabs, activeTabId, setActive
                                         handleSetQuantity(item.id, numVal);
                                       }
                                     }}
-                                    className="w-[18px] text-center font-medium text-[#111617] text-[14px] leading-none bg-transparent focus:outline-none focus:bg-white rounded-sm p-0"
+                                    className="w-[18px] text-center font-medium text-[#02575c] text-[14px] leading-none bg-transparent focus:outline-none focus:bg-white rounded-sm p-0"
                                   />
                                   <button
                                     onClick={() => handleUpdateQuantity(item.id, 1)}
-                                    className="flex-1 h-full flex items-center justify-center text-[#111617] active:bg-black/5 transition-colors text-[18px] font-medium leading-none"
+                                    className="flex-1 h-full flex items-center justify-center text-[#02575c] active:bg-black/5 transition-colors text-[18px] font-medium leading-none"
                                   >
                                     +
                                   </button>
@@ -2416,7 +2420,7 @@ const Billing: React.FC<BillingProps> = ({ tabs, setTabs, activeTabId, setActive
 
                                 {/* Total Price */}
                                 <div className="text-right min-w-[3.2rem]">
-                                  <span className="font-bold text-[#111617] text-[15px]">
+                                  <span className="font-bold text-[#02575c] text-[15px]">
                                     ₹{item.currentPrice * item.quantity}
                                   </span>
                                 </div>
@@ -2432,7 +2436,7 @@ const Billing: React.FC<BillingProps> = ({ tabs, setTabs, activeTabId, setActive
                   <div className="px-5 py-4 pb-6">
                     <button
                       onClick={() => setIsAddProductOpen(true)}
-                      className="w-full py-3 border-[0.5px] border-dashed border-[#767676] rounded-[20px] text-black hover:border-[#02575C] hover:bg-[#E4F595]/20 transition-all flex items-center justify-center gap-1.5 font-medium text-[15px]"
+                      className="w-full py-3 border border-dashed border-[#02575C]/40 rounded-[20px] text-[#02575C] hover:border-[#02575C] hover:bg-[#E4F595]/20 transition-all flex items-center justify-center gap-1.5 font-bold text-[15px]"
                     >
                       + Add Item
                     </button>
@@ -2524,7 +2528,7 @@ const Billing: React.FC<BillingProps> = ({ tabs, setTabs, activeTabId, setActive
                             <button
                               onClick={() => handleStatusChange(item.id)}
                               className={`px-2 py-1 rounded-lg text-xs font-bold border transition-all flex items-center justify-center gap-1 mx-auto w-full ${item.status === ProductStatus.GIVEN
-                                ? 'bg-emerald-50 text-emerald-600 border-emerald-100 hover:bg-emerald-100'
+                                ? 'bg-[#e7faff] text-emerald-600 border-emerald-100 hover:bg-emerald-100'
                                 : 'bg-orange-50 text-orange-600 border-orange-100 hover:bg-orange-100'
                                 }`}
                             >
@@ -2804,7 +2808,7 @@ const Billing: React.FC<BillingProps> = ({ tabs, setTabs, activeTabId, setActive
                           <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
                         </svg>
                       </div>
-                      <h3 className="text-[18px] font-bold text-[#111617] text-center mb-2">Delete this bill?</h3>
+                      <h3 className="text-[18px] font-bold text-[#02575c] text-center mb-2">Delete this bill?</h3>
                       <p className="text-[14px] text-[#797979] text-center mb-6 leading-relaxed">
                         This will clear all items and start a fresh bill. This action cannot be undone.
                       </p>
@@ -2859,10 +2863,10 @@ const Billing: React.FC<BillingProps> = ({ tabs, setTabs, activeTabId, setActive
                         <div className="w-10 h-1 bg-black/10 rounded-full" />
                       </div>
                       <div className="px-5 pb-2 flex items-center justify-between">
-                        <h3 className="text-[18px] font-bold text-[#111617]">Open Bills</h3>
+                        <h3 className="text-[18px] font-bold text-[#02575c]">Open Bills</h3>
                         <button
                           onClick={() => setIsMobileTabSwitcherOpen(false)}
-                          className="p-2 text-[#111617]/40 hover:text-[#111617]/60 rounded-full hover:bg-white transition-colors"
+                          className="p-2 text-[#02575c]/40 hover:text-[#02575c]/60 rounded-full hover:bg-white transition-colors"
                         >
                           <X size={20} />
                         </button>
@@ -2890,13 +2894,13 @@ const Billing: React.FC<BillingProps> = ({ tabs, setTabs, activeTabId, setActive
                                     {isActive && (
                                       <div className="w-2 h-2 rounded-full bg-[#02575C] shrink-0" />
                                     )}
-                                    <span className={`font-semibold text-[15px] truncate ${isActive ? 'text-[#02575C]' : 'text-[#111617]'}`}>
+                                    <span className={`font-semibold text-[15px] truncate ${isActive ? 'text-[#02575C]' : 'text-[#02575c]'}`}>
                                       {tab.bill.customerName || tab.title}
                                     </span>
                                   </div>
                                   <div className="flex items-center gap-3 mt-1 ml-4">
-                                    <span className="text-[12px] text-[#111617]/40">{tab.bill.items.length} items</span>
-                                    <span className="text-[14px] font-bold text-[#111617]">₹{tab.bill.totalAmount.toLocaleString()}</span>
+                                    <span className="text-[12px] text-[#02575c]/40">{tab.bill.items.length} items</span>
+                                    <span className="text-[14px] font-bold text-[#02575c]">₹{tab.bill.totalAmount.toLocaleString()}</span>
                                   </div>
                                 </div>
                                 {/* Close button */}
@@ -2906,7 +2910,7 @@ const Billing: React.FC<BillingProps> = ({ tabs, setTabs, activeTabId, setActive
                                       e.stopPropagation();
                                       handleCloseTab(e as any, tab.id);
                                     }}
-                                    className="p-1.5 text-[#111617]/20 hover:text-red-500 hover:bg-red-50 rounded-full transition-colors shrink-0 ml-2"
+                                    className="p-1.5 text-[#02575c]/20 hover:text-red-500 hover:bg-red-50 rounded-full transition-colors shrink-0 ml-2"
                                   >
                                     <X size={16} />
                                   </button>
@@ -2952,9 +2956,9 @@ const Billing: React.FC<BillingProps> = ({ tabs, setTabs, activeTabId, setActive
                         onClick={() => setIsMobilePaymentPageOpen(false)}
                         className="w-[36px] h-[36px] flex items-center justify-center bg-white rounded-full shadow-sm active:scale-95 transition-transform"
                       >
-                        <ChevronLeft size={20} strokeWidth={2.5} className="text-[#111617]" />
+                        <ChevronLeft size={20} strokeWidth={2.5} className="text-[#02575c]" />
                       </button>
-                      <h2 className="text-[18px] font-bold text-[#111617]">Payment & Billing</h2>
+                      <h2 className="text-[18px] font-bold text-[#02575c]">Payment & Billing</h2>
                     </div>
 
                     {/* Stats Bar - Clean White */}
@@ -2988,7 +2992,7 @@ const Billing: React.FC<BillingProps> = ({ tabs, setTabs, activeTabId, setActive
                           onClick={() => updateActiveBill({ isPaid: true })}
                           className={`flex-1 py-3 rounded-[12px] text-[14px] font-bold transition-all flex items-center justify-center gap-2 ${activeBill.isPaid
                             ? 'bg-[#02575C] text-white shadow-sm'
-                            : 'text-[#111617]/40 hover:text-[#111617]/60'
+                            : 'text-[#02575c]/40 hover:text-[#02575c]/60'
                             }`}
                         >
                           <Check size={14} strokeWidth={3} />
@@ -2998,7 +3002,7 @@ const Billing: React.FC<BillingProps> = ({ tabs, setTabs, activeTabId, setActive
                           onClick={() => updateActiveBill({ isPaid: false })}
                           className={`flex-1 py-3 rounded-[12px] text-[14px] font-bold transition-all flex items-center justify-center gap-2 ${!activeBill.isPaid
                             ? 'bg-[#02575C] text-white shadow-sm'
-                            : 'text-[#111617]/40 hover:text-[#111617]/60'
+                            : 'text-[#02575c]/40 hover:text-[#02575c]/60'
                             }`}
                         >
                           <div className="flex gap-1"><div className="w-1 h-1 bg-current rounded-full"></div><div className="w-1 h-1 bg-current rounded-full"></div><div className="w-1 h-1 bg-current rounded-full"></div></div>
@@ -3013,7 +3017,7 @@ const Billing: React.FC<BillingProps> = ({ tabs, setTabs, activeTabId, setActive
                             <label className="text-[10px] font-bold text-[#797979] uppercase tracking-widest pl-1">CASH PAYMENT</label>
                             <div className="bg-white rounded-[14px] p-3.5 flex flex-col gap-2.5">
                               <div className="flex items-center gap-1.5">
-                                <span className="text-[#111617]/30 font-bold text-base">₹</span>
+                                <span className="text-[#02575c]/30 font-bold text-base">₹</span>
                                 <input
                                   type="number"
                                   inputMode="numeric"
@@ -3028,13 +3032,13 @@ const Billing: React.FC<BillingProps> = ({ tabs, setTabs, activeTabId, setActive
                                       paymentMethod: cashVal > 0 && remaining === 0 ? PaymentMethod.CASH : PaymentMethod.ONLINE
                                     });
                                   }}
-                                  className="w-full bg-transparent font-black text-lg text-[#111617] focus:outline-none focus:ring-0 placeholder:text-[#111617]/20"
+                                  className="w-full bg-transparent font-black text-lg text-[#02575c] focus:outline-none focus:ring-0 placeholder:text-[#02575c]/20"
                                   placeholder="0"
                                 />
                               </div>
                               <button
                                 onClick={() => handleQuickPayment('CASH')}
-                                className="w-full py-1.5 bg-[#F3F5F2] hover:bg-gray-100 rounded-[8px] text-[10px] font-bold text-[#111617]/60 uppercase tracking-widest transition-colors"
+                                className="w-full py-1.5 bg-[#F3F5F2] hover:bg-gray-100 rounded-[8px] text-[10px] font-bold text-[#02575c]/60 uppercase tracking-widest transition-colors"
                               >
                                 ALL CASH
                               </button>
@@ -3044,7 +3048,7 @@ const Billing: React.FC<BillingProps> = ({ tabs, setTabs, activeTabId, setActive
                             <label className="text-[10px] font-bold text-[#797979] uppercase tracking-widest pl-1">ONLINE PAYMENT</label>
                             <div className="bg-white rounded-[14px] p-3.5 flex flex-col gap-2.5">
                               <div className="flex items-center gap-1.5">
-                                <span className="text-[#111617]/30 font-bold text-base">₹</span>
+                                <span className="text-[#02575c]/30 font-bold text-base">₹</span>
                                 <input
                                   type="number"
                                   inputMode="numeric"
@@ -3059,7 +3063,7 @@ const Billing: React.FC<BillingProps> = ({ tabs, setTabs, activeTabId, setActive
                                       paymentMethod: onlineVal > 0 && remaining === 0 ? PaymentMethod.ONLINE : PaymentMethod.CASH
                                     });
                                   }}
-                                  className="w-full bg-transparent font-black text-lg text-[#111617] focus:outline-none focus:ring-0 placeholder:text-[#111617]/20"
+                                  className="w-full bg-transparent font-black text-lg text-[#02575c] focus:outline-none focus:ring-0 placeholder:text-[#02575c]/20"
                                   placeholder="0"
                                 />
                               </div>
@@ -3118,7 +3122,7 @@ const Billing: React.FC<BillingProps> = ({ tabs, setTabs, activeTabId, setActive
                                             const val = parseFloat(e.target.value);
                                             applyDiscount('percentage', isNaN(val) ? 0 : val);
                                           }}
-                                          className="w-16 text-center text-lg font-black text-[#111617] focus:outline-none bg-transparent placeholder:text-[#111617]/20"
+                                          className="w-16 text-center text-lg font-black text-[#02575c] focus:outline-none bg-transparent placeholder:text-[#02575c]/20"
                                           placeholder="0"
                                         />
                                       </div>
@@ -3126,7 +3130,7 @@ const Billing: React.FC<BillingProps> = ({ tabs, setTabs, activeTabId, setActive
                                     <div className="space-y-1.5">
                                       <label className="text-[9px] font-bold text-[#02575C]/60 uppercase tracking-widest text-center block">AMOUNT</label>
                                       <div className="bg-[#F3F5F2] rounded-[8px] p-2.5 flex justify-center items-center gap-1">
-                                        <span className="text-[#111617]/30 font-bold text-sm">₹</span>
+                                        <span className="text-[#02575c]/30 font-bold text-sm">₹</span>
                                         <input
                                           type="number"
                                           inputMode="numeric"
@@ -3135,7 +3139,7 @@ const Billing: React.FC<BillingProps> = ({ tabs, setTabs, activeTabId, setActive
                                             const val = parseFloat(e.target.value);
                                             applyDiscount('amount', isNaN(val) ? 0 : val);
                                           }}
-                                          className="w-16 text-left text-lg font-black text-[#111617] focus:outline-none bg-transparent placeholder:text-[#111617]/20"
+                                          className="w-16 text-left text-lg font-black text-[#02575c] focus:outline-none bg-transparent placeholder:text-[#02575c]/20"
                                           placeholder="0"
                                         />
                                       </div>
@@ -3148,8 +3152,8 @@ const Billing: React.FC<BillingProps> = ({ tabs, setTabs, activeTabId, setActive
                                       <span className="text-[13px] font-bold text-[#02575C] tracking-tight">- ₹{activeBill.discountAmount || 0}</span>
                                     </div>
                                     <div className="flex justify-between items-center px-0.5">
-                                      <span className="text-sm font-bold text-[#111617]">Final Net Amount</span>
-                                      <span className="text-lg font-black text-[#111617] tracking-tight">₹{activeBill.totalAmount}</span>
+                                      <span className="text-sm font-bold text-[#02575c]">Final Net Amount</span>
+                                      <span className="text-lg font-black text-[#02575c] tracking-tight">₹{activeBill.totalAmount}</span>
                                     </div>
                                   </div>
                                 </div>
@@ -3164,17 +3168,17 @@ const Billing: React.FC<BillingProps> = ({ tabs, setTabs, activeTabId, setActive
                         {/* Show SP Toggle */}
                         <div className="w-full bg-white rounded-[14px] p-3.5 flex items-center justify-between">
                           <div className="flex items-center gap-2.5">
-                            <div className="text-[#111617]/30">
+                            <div className="text-[#02575c]/30">
                               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                                 <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z" />
                                 <circle cx="12" cy="12" r="3" />
                               </svg>
                             </div>
-                            <span className="font-semibold text-[#111617] text-[13px]">Show SP on bill</span>
+                            <span className="font-semibold text-[#02575c] text-[13px]">Show SP on bill</span>
                           </div>
 
                           <div
-                            className={`w-11 h-6 rounded-full p-1 cursor-pointer transition-colors flex items-center ${activeBill.showSpOnBill !== false ? 'bg-[#02575C]' : 'bg-[#111617]/15'}`}
+                            className={`w-11 h-6 rounded-full p-1 cursor-pointer transition-colors flex items-center ${activeBill.showSpOnBill !== false ? 'bg-[#02575C]' : 'bg-[#02575c]/15'}`}
                             onClick={() => updateActiveBill({ showSpOnBill: activeBill.showSpOnBill === false ? true : false })}
                           >
                             <div className={`bg-white w-4 h-4 rounded-full shadow-sm transform transition-transform ${activeBill.showSpOnBill !== false ? 'translate-x-5' : 'translate-x-0'}`} />
@@ -3184,14 +3188,14 @@ const Billing: React.FC<BillingProps> = ({ tabs, setTabs, activeTabId, setActive
                         {/* Send on WhatsApp Toggle */}
                         <div className="w-full bg-white rounded-[14px] p-3.5 flex items-center justify-between">
                           <div className="flex items-center gap-2.5">
-                            <div className="text-[#111617]/30">
-                              <MessageSquare size={20} className="text-[#111617]/50" />
+                            <div className="text-[#02575c]/30">
+                              <MessageSquare size={20} className="text-[#02575c]/50" />
                             </div>
-                            <span className="font-semibold text-[#111617] text-[13px]">Send on WhatsApp</span>
+                            <span className="font-semibold text-[#02575c] text-[13px]">Send on WhatsApp</span>
                           </div>
 
                           <div
-                            className={`w-11 h-6 rounded-full p-1 cursor-pointer transition-colors flex items-center ${activeBill.sendWhatsapp !== false ? 'bg-[#02575C]' : 'bg-[#111617]/15'}`}
+                            className={`w-11 h-6 rounded-full p-1 cursor-pointer transition-colors flex items-center ${activeBill.sendWhatsapp !== false ? 'bg-[#02575C]' : 'bg-[#02575c]/15'}`}
                             onClick={() => updateActiveBill({ sendWhatsapp: activeBill.sendWhatsapp === false ? true : false })}
                           >
                             <div className={`bg-white w-4 h-4 rounded-full shadow-sm transform transition-transform ${activeBill.sendWhatsapp !== false ? 'translate-x-5' : 'translate-x-0'}`} />
@@ -3247,7 +3251,7 @@ const Billing: React.FC<BillingProps> = ({ tabs, setTabs, activeTabId, setActive
                   <button
                     onClick={() => handlePricingModeChange('DP')}
                     className={`px-3 py-1.5 text-xs font-black rounded-md transition-all ${activeBill.billingType === 'DP'
-                      ? 'bg-emerald-500 text-white shadow-md shadow-emerald-200'
+                      ? 'bg-[#e7faff]0 text-white shadow-md shadow-emerald-200'
                       : 'text-gray-500 hover:text-dark hover:bg-gray-200'
                       }`}
                   >
@@ -3315,7 +3319,7 @@ const Billing: React.FC<BillingProps> = ({ tabs, setTabs, activeTabId, setActive
                               <span className="w-8 text-center font-bold text-dark text-xs">{item.quantity}</span>
                               <button
                                 onClick={() => handleUpdateQuantity(item.id, 1)}
-                                className="w-7 h-7 flex items-center justify-center text-gray-600 hover:text-emerald-600 hover:bg-emerald-50 rounded-r-lg transition-colors font-bold"
+                                className="w-7 h-7 flex items-center justify-center text-gray-600 hover:text-emerald-600 hover:bg-[#e7faff] rounded-r-lg transition-colors font-bold"
                               >
                                 +
                               </button>
@@ -3324,7 +3328,7 @@ const Billing: React.FC<BillingProps> = ({ tabs, setTabs, activeTabId, setActive
 
                           {/* Total SP Column */}
                           <div className="w-16 flex justify-center shrink-0">
-                            <span className="text-emerald-700 font-black text-xs bg-emerald-50 px-2.0 py-0.5 rounded border border-emerald-100/50">
+                            <span className="text-emerald-700 font-black text-xs bg-[#e7faff] px-2.0 py-0.5 rounded border border-emerald-100/50">
                               {(item.sp * item.quantity).toFixed(1)}
                             </span>
                           </div>
@@ -3354,8 +3358,8 @@ const Billing: React.FC<BillingProps> = ({ tabs, setTabs, activeTabId, setActive
             {/* Summary Bar - Compact Inline */}
             < div className="px-5 py-3 border-t border-gray-100 shrink-0 bg-white shadow-sm z-20" >
               <div className="flex items-center justify-between gap-4">
-                <div className="flex items-center gap-2 bg-emerald-50/50 px-3 py-1.5 rounded-lg border border-emerald-100/50">
-                  <span className="text-xs font-bold text-emerald-800 uppercase tracking-wider">Total SP:</span>
+                <div className="flex items-center gap-2 bg-[#e7faff]/50 px-3 py-1.5 rounded-lg border border-emerald-100/50">
+                  <span className="text-xs font-bold text-[#02575c] uppercase tracking-wider">Total SP:</span>
                   <span className="text-lg font-black text-emerald-700">{activeBill.totalSp.toFixed(1)}</span>
                 </div>
                 <div className="flex items-center gap-2">
@@ -3433,13 +3437,13 @@ const Billing: React.FC<BillingProps> = ({ tabs, setTabs, activeTabId, setActive
                   handleMarkBillReady(allPending); // isReady will be true if all were pending
                 }}
                 className={`p-4 rounded-xl border transition-all cursor-pointer flex items-center justify-between ${!activeBill.items.every(item => item.status === ProductStatus.PENDING)
-                  ? 'bg-emerald-50 border-emerald-100 ring-1 ring-emerald-100'
+                  ? 'bg-[#e7faff] border-emerald-100 ring-1 ring-emerald-100'
                   : 'bg-white border-gray-100 hover:border-gray-200 shadow-sm'
                   }`}
               >
                 <div className="flex items-center gap-3">
                   <div className={`w-6 h-6 rounded flex items-center justify-center border-2 transition-all ${!activeBill.items.every(item => item.status === ProductStatus.PENDING)
-                    ? 'bg-emerald-500 border-emerald-500 text-white'
+                    ? 'bg-[#e7faff]0 border-[#e7faff]0 text-white'
                     : 'border-gray-300 bg-white'
                     }`}>
                     {!activeBill.items.every(item => item.status === ProductStatus.PENDING) && <Check size={14} strokeWidth={4} />}
@@ -3503,7 +3507,7 @@ const Billing: React.FC<BillingProps> = ({ tabs, setTabs, activeTabId, setActive
                         }
                       }}
                     />
-                    <div className={`w-12 h-7 rounded-full transition-colors duration-200 ease-in-out flex items-center px-1 ${item.status === ProductStatus.GIVEN ? 'bg-emerald-500' : 'bg-gray-300'}`}>
+                    <div className={`w-12 h-7 rounded-full transition-colors duration-200 ease-in-out flex items-center px-1 ${item.status === ProductStatus.GIVEN ? 'bg-[#e7faff]0' : 'bg-gray-300'}`}>
                       <div className={`w-5 h-5 bg-white rounded-full shadow-sm transform transition-transform duration-200 ease-in-out ${item.status === ProductStatus.GIVEN ? 'translate-x-5' : 'translate-x-0'}`} />
                     </div>
                   </div>
@@ -3554,7 +3558,7 @@ const Billing: React.FC<BillingProps> = ({ tabs, setTabs, activeTabId, setActive
                 {/* Total Balance Due - Red highlight when unpaid */}
                 <div className={`rounded-xl p-5 border transition-all ${!activeBill.isPaid
                   ? 'bg-red-50/70 border-red-200'
-                  : 'bg-emerald-50/50 border-emerald-200'
+                  : 'bg-[#e7faff]/50 border-emerald-200'
                   }`}>
                   <div className="flex items-center justify-between mb-1">
                     <span className="text-sm font-bold text-gray-600">Total Balance Due</span>
@@ -3642,13 +3646,13 @@ const Billing: React.FC<BillingProps> = ({ tabs, setTabs, activeTabId, setActive
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
                     <label className="text-sm font-bold text-gray-600 flex items-center gap-2">
-                      <span className="w-5 h-5 bg-green-100 rounded flex items-center justify-center"><span className="text-green-600 text-[10px]">₹</span></span>
+                      <span className="w-5 h-5 bg-green-100 rounded flex items-center justify-center"><span className="text-[#5abc8b] text-[10px]">₹</span></span>
                       Cash Amount
                     </label>
                     <button
                       onClick={() => updateActiveBill({ cashAmount: activeBill.totalAmount, onlineAmount: 0, paymentMethod: PaymentMethod.CASH })}
                       className={`text-[10px] font-black uppercase tracking-wider px-2.5 py-1 rounded-md transition-all ${(activeBill.cashAmount || 0) === activeBill.totalAmount && activeBill.totalAmount > 0
-                        ? 'bg-green-100 text-green-700'
+                        ? 'bg-green-100 text-[#5abc8b]'
                         : 'bg-red-50 text-red-500 hover:bg-red-100'
                         }`}
                     >
@@ -3827,14 +3831,14 @@ const Billing: React.FC<BillingProps> = ({ tabs, setTabs, activeTabId, setActive
                       <div
                         onClick={() => handleUpdateItemPendingStatus(item.id, 0)}
                         className={`p-4 rounded-xl border-2 flex items-center justify-between cursor-pointer transition-all ${(item.pendingQuantity || 0) === 0
-                          ? 'border-emerald-500 bg-emerald-50'
+                          ? 'border-[#e7faff]0 bg-[#e7faff]'
                           : 'border-gray-100 hover:border-gray-50'
                           }`}
                       >
                         <div className="flex items-center gap-3">
-                          <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${(item.pendingQuantity || 0) === 0 ? 'border-emerald-500' : 'border-gray-300'
+                          <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${(item.pendingQuantity || 0) === 0 ? 'border-[#e7faff]0' : 'border-gray-300'
                             }`}>
-                            {(item.pendingQuantity || 0) === 0 && <div className="w-2.5 h-2.5 bg-emerald-500 rounded-full" />}
+                            {(item.pendingQuantity || 0) === 0 && <div className="w-2.5 h-2.5 bg-[#e7faff]0 rounded-full" />}
                           </div>
                           <span className={`font-bold ${(item.pendingQuantity || 0) === 0 ? 'text-emerald-700' : 'text-gray-700'}`}>Given</span>
                         </div>
@@ -3885,7 +3889,7 @@ const Billing: React.FC<BillingProps> = ({ tabs, setTabs, activeTabId, setActive
                             handleMarkAllBillItemsGiven();
                             setStatusDrawerItemId(null);
                           }}
-                          className="flex-1 py-3.5 bg-[#0DA665] text-white rounded-xl font-bold text-sm sm:text-base flex items-center justify-center gap-2 active:scale-[0.98] transition-all shadow-lg shadow-emerald-200"
+                          className="flex-1 py-3.5 bg-[#5abc8b] text-white rounded-xl font-bold text-sm sm:text-base flex items-center justify-center gap-2 active:scale-[0.98] transition-all shadow-lg shadow-emerald-200"
                         >
                           <CheckCircle size={18} strokeWidth={2.5} />
                           Mark All Given
@@ -3937,13 +3941,13 @@ const Billing: React.FC<BillingProps> = ({ tabs, setTabs, activeTabId, setActive
               >
                 {/* Header */}
                 <div className="p-4 pb-3 flex items-center justify-between">
-                  <div className="flex items-center gap-2.5 text-[#111617]">
-                    <UserPlus size={20} strokeWidth={2} className="text-[#21776A]" />
+                  <div className="flex items-center gap-2.5 text-[#02575c]">
+                    <UserPlus size={20} strokeWidth={2} className="text-[#00747B]" />
                     <h3 className="font-bold text-[16px]">Search/Add Customer</h3>
                   </div>
                   <button
                     onClick={() => setIsMobileCustomerSearchOpen(false)}
-                    className="p-1.5 text-[#111617]/30 hover:text-[#111617]/60 rounded-full hover:bg-[#F3F5F2] transition-colors"
+                    className="p-1.5 text-[#02575c]/30 hover:text-[#02575c]/60 rounded-full hover:bg-[#F3F5F2] transition-colors"
                   >
                     <X size={18} />
                   </button>
@@ -3952,12 +3956,12 @@ const Billing: React.FC<BillingProps> = ({ tabs, setTabs, activeTabId, setActive
                 <div className="px-4 pb-4 overflow-y-auto custom-scrollbar flex-1">
                   {/* Search Input */}
                   <div className="relative mb-4">
-                    <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[#111617]/30" />
+                    <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[#02575c]/30" />
                     <input
                       autoFocus
                       type="text"
                       placeholder="Search or add customer..."
-                      className="w-full pl-10 pr-4 py-3 bg-[#F3F5F2] rounded-[12px] text-[#111617] text-[14px] font-medium placeholder:text-[#111617]/30 focus:bg-white focus:ring-2 focus:ring-[#21776A]/20 focus:border focus:border-[#21776A]/30 outline-none transition-all"
+                      className="w-full pl-10 pr-4 py-3 bg-[#F3F5F2] rounded-[12px] text-[#02575c] text-[14px] font-medium placeholder:text-[#02575c]/30 focus:bg-white focus:ring-2 focus:ring-[#00747B]/20 focus:border focus:border-[#00747B]/30 outline-none transition-all"
                       value={activeBill.customerName}
                       onChange={(e) => updateActiveBill({ customerName: e.target.value })}
                     />
@@ -3965,7 +3969,7 @@ const Billing: React.FC<BillingProps> = ({ tabs, setTabs, activeTabId, setActive
 
                   {/* Customer List */}
                   <div>
-                    <h4 className="text-[9px] font-bold text-[#111617]/30 uppercase tracking-widest mb-2 pl-1">
+                    <h4 className="text-[9px] font-bold text-[#02575c]/30 uppercase tracking-widest mb-2 pl-1">
                       {activeBill.customerName ? 'Search Results' : 'Recent Customers'}
                     </h4>
                     <div className="space-y-0.5">
@@ -3981,18 +3985,18 @@ const Billing: React.FC<BillingProps> = ({ tabs, setTabs, activeTabId, setActive
                               className="flex items-center justify-between p-2.5 hover:bg-[#F3F5F2] rounded-[12px] cursor-pointer group transition-colors active:scale-[0.98]"
                             >
                               <div className="flex items-center gap-3">
-                                <div className="w-10 h-10 rounded-full bg-[#DAF4D7] text-[#21776A] flex items-center justify-center font-bold text-[11px] tracking-wide">
+                                <div className="w-10 h-10 rounded-full bg-[#DAF4D7] text-[#00747B] flex items-center justify-center font-bold text-[11px] tracking-wide">
                                   {c.name.substring(0, 2).toUpperCase()}
                                 </div>
                                 <div>
-                                  <p className="font-semibold text-[#111617] text-[13px]">{c.name}</p>
-                                  <p className="text-[11px] text-[#111617]/40">{c.phone}</p>
+                                  <p className="font-semibold text-[#02575c] text-[13px]">{c.name}</p>
+                                  <p className="text-[11px] text-[#02575c]/40">{c.phone}</p>
                                 </div>
                               </div>
-                              <ChevronDown size={14} className="-rotate-90 text-[#111617]/15 group-hover:text-[#111617]/30 transition-colors" />
+                              <ChevronDown size={14} className="-rotate-90 text-[#02575c]/15 group-hover:text-[#02575c]/30 transition-colors" />
                             </div>
                           ))
-                          : <div className="text-center py-6 text-[#111617]/30 text-sm">No customers found</div>
+                          : <div className="text-center py-6 text-[#02575c]/30 text-sm">No customers found</div>
                         : recentCustomers.slice(0, 8).map(c => (
                           <div
                             key={c.id}
@@ -4003,15 +4007,15 @@ const Billing: React.FC<BillingProps> = ({ tabs, setTabs, activeTabId, setActive
                             className="flex items-center justify-between p-2.5 hover:bg-[#F3F5F2] rounded-[12px] cursor-pointer group transition-colors active:scale-[0.98]"
                           >
                             <div className="flex items-center gap-3">
-                              <div className="w-10 h-10 rounded-full bg-[#F3F5F2] text-[#111617]/50 flex items-center justify-center font-bold text-[11px] tracking-wide">
+                              <div className="w-10 h-10 rounded-full bg-[#F3F5F2] text-[#02575c]/50 flex items-center justify-center font-bold text-[11px] tracking-wide">
                                 {c.name.substring(0, 2).toUpperCase()}
                               </div>
                               <div>
-                                <p className="font-semibold text-[#111617] text-[13px]">{c.name}</p>
-                                <p className="text-[11px] text-[#111617]/40">{c.phone}</p>
+                                <p className="font-semibold text-[#02575c] text-[13px]">{c.name}</p>
+                                <p className="text-[11px] text-[#02575c]/40">{c.phone}</p>
                               </div>
                             </div>
-                            <ChevronDown size={14} className="-rotate-90 text-[#111617]/15 group-hover:text-[#111617]/30 transition-colors" />
+                            <ChevronDown size={14} className="-rotate-90 text-[#02575c]/15 group-hover:text-[#02575c]/30 transition-colors" />
                           </div>
                         ))
                       }
@@ -4023,7 +4027,7 @@ const Billing: React.FC<BillingProps> = ({ tabs, setTabs, activeTabId, setActive
                 <div className="p-4 pt-3 border-t border-[#F3F5F2] flex items-center justify-between gap-3 bg-white">
                   <button
                     onClick={() => setIsMobileCustomerSearchOpen(false)}
-                    className="font-bold text-[#111617]/40 hover:text-[#111617]/60 px-4 py-2.5 transition-colors text-[13px]"
+                    className="font-bold text-[#02575c]/40 hover:text-[#02575c]/60 px-4 py-2.5 transition-colors text-[13px]"
                   >
                     Cancel
                   </button>
@@ -4032,7 +4036,7 @@ const Billing: React.FC<BillingProps> = ({ tabs, setTabs, activeTabId, setActive
                       setIsMobileCustomerSearchOpen(false);
                       setIsAddCustomerOpen(true);
                     }}
-                    className="flex-1 bg-[#88DE7D] hover:bg-[#7cd472] text-[#111617] font-bold py-3 px-5 rounded-[12px] shadow-sm flex items-center justify-center gap-2 active:scale-[0.98] transition-all text-[13px]"
+                    className="flex-1 bg-[#88DE7D] hover:bg-[#7cd472] text-[#02575c] font-bold py-3 px-5 rounded-[12px] shadow-sm flex items-center justify-center gap-2 active:scale-[0.98] transition-all text-[13px]"
                   >
                     <UserPlus size={16} strokeWidth={2.5} />
                     Add New Customer

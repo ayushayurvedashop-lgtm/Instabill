@@ -13,7 +13,17 @@ export const PublicInvoiceViewer: React.FC = () => {
     useEffect(() => {
         const fetchBill = async () => {
             const params = new URLSearchParams(window.location.search);
-            const billId = params.get('billId');
+            let billId = params.get('billId');
+
+            const pathParts = window.location.pathname.split('/').filter(Boolean);
+            if (!billId && pathParts.length >= 3 && pathParts[0] === 'instabill') {
+                billId = decodeURIComponent(pathParts[2]);
+            }
+
+            // Optionally add # back if billId from path doesn't have it but is expected
+            if (billId && !billId.startsWith('#') && !isNaN(Number(billId))) {
+               billId = '#' + billId;
+            }
 
             if (!billId) {
                 setError('No bill ID provided.');

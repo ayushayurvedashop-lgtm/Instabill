@@ -1,12 +1,22 @@
 import React, { useState, useEffect } from 'react';
 import { AreaChart, Area, XAxis, Tooltip, ResponsiveContainer } from 'recharts';
-import { TrendingUp, PieChart, ShoppingCart, Users, Calendar, MoreHorizontal, ChevronLeft, ChevronRight, Printer, Banknote, Smartphone, Crown } from 'lucide-react';
+import { TrendingUp, PieChart, ShoppingCart, Users, Calendar, MoreHorizontal, ChevronLeft, ChevronRight, Printer, Banknote, Smartphone, Crown, Package, AlertTriangle } from 'lucide-react';
 import { store } from '../store';
-import { Product, Bill, ShopProfile } from '../types';
+import { Product, Bill, ShopProfile, ProductStatus } from '../types';
 import { getLocalDateString } from '../lib/utils';
 import BillDetailModal from './BillDetailModal';
 import DailyStatsModal from './DailyStatsModal';
 import TodayOverview from './TodayOverview';
+
+interface AggregatedPendingProduct {
+  productId: string;
+  name: string;
+  totalPendingQty: number;
+  price: number; // MRP
+  totalValue: number; // price × totalPendingQty
+  priority: 'High' | 'Medium' | 'Low';
+  billCount: number; // how many bills reference this product as pending
+}
 
 interface DashboardProps {
   setActiveView?: (view: string) => void;
@@ -90,6 +100,8 @@ const Dashboard: React.FC<DashboardProps> = ({ setActiveView, onEditBill, search
   const [chartData, setChartData] = useState<any[]>([]);
   const [selectedBill, setSelectedBill] = useState<Bill | null>(null);
   const [billDates, setBillDates] = useState<Set<string>>(new Set());
+  const [pendingProducts, setPendingProducts] = useState<AggregatedPendingProduct[]>([]);
+  const [showAllPending, setShowAllPending] = useState(false);
 
   useEffect(() => {
     const updateState = () => {
@@ -301,6 +313,47 @@ const Dashboard: React.FC<DashboardProps> = ({ setActiveView, onEditBill, search
 
       setRecentBills(listBills);
       setProducts(currentProducts);
+
+      // Aggregate pending products across all bills
+      const pendingMap = new Map<string, { name: string; qty: number; price: number; billIds: Set<string> }>();
+      allBills.forEach(bill => {
+        bill.items.forEach(item => {
+          if (item.status === ProductStatus.PENDING) {
+            const pqty = item.pendingQuantity !== undefined ? item.pendingQuantity : item.quantity;
+            if (pqty > 0) {
+              const existing = pendingMap.get(item.id);
+              if (existing) {
+                existing.qty += pqty;
+                existing.billIds.add(bill.id);
+              } else {
+                pendingMap.set(item.id, {
+                  name: item.name,
+                  qty: pqty,
+                  price: item.mrp || item.currentPrice,
+                  billIds: new Set([bill.id]),
+                });
+              }
+            }
+          }
+        });
+      });
+
+      const aggregated: AggregatedPendingProduct[] = Array.from(pendingMap.entries()).map(([id, data]) => {
+        const totalValue = data.price * data.qty;
+        return {
+          productId: id,
+          name: data.name,
+          totalPendingQty: data.qty,
+          price: data.price,
+          totalValue,
+          priority: totalValue >= 2000 ? 'High' : totalValue >= 500 ? 'Medium' : 'Low',
+          billCount: data.billIds.size,
+        };
+      });
+
+      // Sort by priority score descending (totalValue)
+      aggregated.sort((a, b) => b.totalValue - a.totalValue);
+      setPendingProducts(aggregated);
     };
 
     updateState();
@@ -349,9 +402,9 @@ const Dashboard: React.FC<DashboardProps> = ({ setActiveView, onEditBill, search
     <div className="flex flex-col gap-6 w-full pb-8">
       {/* Greeting Section */}
       <div className="px-1 md:px-2 pt-6 md:pt-8 mb-2">
-        <h1 className="text-4xl md:text-[2rem] md:leading-[2.2rem] font-extrabold text-[#12332A] tracking-tight">
+        <h1 className="text-4xl md:text-[2rem] md:leading-[2.2rem] font-extrabold text-[#02575c] tracking-tight">
           {getGreeting()},<br className="md:hidden" />
-          <span className="md:ml-2 text-transparent bg-clip-text bg-gradient-to-r from-green-600 to-[#21776A]">Welcome back!</span>
+          <span className="md:ml-2 text-transparent bg-clip-text bg-gradient-to-r from-[#5abc8b] to-[#02575c]">Welcome back!</span>
         </h1>
       </div>
 
@@ -377,7 +430,7 @@ const Dashboard: React.FC<DashboardProps> = ({ setActiveView, onEditBill, search
                 <button 
                   onClick={() => {
                       dismissWarning();
-                      if (setActiveView) setActiveView('settings');
+                      if (setActiveView) setActiveView('subscription-manager');
                   }}
                   className="flex-1 sm:flex-none px-5 py-2.5 bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white text-xs font-bold rounded-xl transition-all shadow-sm shadow-orange-500/20 whitespace-nowrap"
                 >
@@ -395,256 +448,264 @@ const Dashboard: React.FC<DashboardProps> = ({ setActiveView, onEditBill, search
       )}
 
       {/* Hero Section - Sales Trends */}
-      <section className="bg-white rounded-3xl p-6 md:p-8 shadow-sm border border-gray-100 mb-8 relative overflow-hidden">
+      <section className="bg-white rounded-[2rem] p-6 px-4 md:px-8 md:p-8 shadow-sm border border-gray-100 mb-8 relative overflow-hidden">
+        {/* Top Header Row */}
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-4 md:mb-6 gap-3 md:gap-4 relative z-10 w-full overflow-hidden">
+          <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[#E2F5F6] text-[#00747B] text-xs md:text-sm font-bold shrink-0">
+            <span className="w-1.5 h-1.5 rounded-full bg-[#00747B] animate-pulse"></span>
+            Live Analytics
+          </div>
+
+          {/* Time Period Buttons */}
+          <div className="flex items-center justify-start gap-1.5 md:gap-2 overflow-x-auto w-full md:w-auto pb-1 md:pb-0 scrollbar-none shrink-0" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
+            {(['Week', 'Month', 'Year'] as const).map((period) => (
+              <button
+                key={period}
+                onClick={() => { setTimeRange(period); setSelectedDate(null); }}
+                className={`px-3 py-1.5 text-xs font-bold rounded-full border transition-all whitespace-nowrap ${timeRange === period && !selectedDate
+                  ? 'bg-[#02575c] text-white border-[#02575c] shadow-lg shadow-[#02575c]/20'
+                  : 'bg-white text-gray-500 border-gray-200 hover:bg-gray-50'
+                  }`}
+              >
+                {period}
+              </button>
+            ))}
+            <div className="hidden md:block w-px h-5 bg-gray-200 mx-0.5" />
+            <div className="relative shrink-0">
+              <button
+                onClick={() => setShowDatePicker(!showDatePicker)}
+                className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold rounded-full border transition-all whitespace-nowrap ${timeRange === 'Custom' && selectedDate
+                  ? 'bg-[#02575c] text-white border-[#02575c]'
+                  : 'bg-white text-gray-500 border-gray-200 hover:bg-gray-50'
+                  }`}
+              >
+                <Calendar size={14} />
+                {selectedDate
+                  ? selectedDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+                  : 'Select Date'
+                }
+              </button>
+
+              {/* Date Picker Modal */}
+              {showDatePicker && (
+                <div className="absolute top-full right-0 mt-2 z-50 bg-white border border-gray-100 rounded-[1.5rem] p-4 shadow-xl min-w-[300px]">
+                  {/* Calendar Header */}
+                  <div className="flex items-center justify-between mb-4">
+                    <button
+                      onClick={() => {
+                        if (calendarMonth === 0) {
+                          setCalendarMonth(11);
+                          setCalendarYear(calendarYear - 1);
+                        } else {
+                          setCalendarMonth(calendarMonth - 1);
+                        }
+                      }}
+                      className="w-8 h-8 rounded-lg bg-gray-50 flex items-center justify-center text-gray-600 hover:bg-gray-100 transition-all"
+                    >
+                      <ChevronLeft size={16} />
+                    </button>
+                    <span className="text-[#02575c] font-bold">
+                      {new Date(calendarYear, calendarMonth).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
+                    </span>
+                    <button
+                      onClick={() => {
+                        if (calendarMonth === 11) {
+                          setCalendarMonth(0);
+                          setCalendarYear(calendarYear + 1);
+                        } else {
+                          setCalendarMonth(calendarMonth + 1);
+                        }
+                      }}
+                      className="w-8 h-8 rounded-lg bg-gray-50 flex items-center justify-center text-gray-600 hover:bg-gray-100 transition-all"
+                    >
+                      <ChevronRight size={16} />
+                    </button>
+                  </div>
+
+                  {/* Weekday Headers */}
+                  <div className="grid grid-cols-7 gap-1 mb-2">
+                    {['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'].map(day => (
+                      <div key={day} className="text-center text-xs font-bold text-gray-400 py-1">
+                        {day}
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Calendar Days */}
+                  <div className="grid grid-cols-7 gap-1">
+                    {(() => {
+                      const firstDay = new Date(calendarYear, calendarMonth, 1).getDay();
+                      const daysInMonth = new Date(calendarYear, calendarMonth + 1, 0).getDate();
+                      const days = [];
+
+                      // Empty cells
+                      for (let i = 0; i < firstDay; i++) {
+                        days.push(<div key={`empty-${i}`} className="w-8 h-8" />);
+                      }
+
+                      // Actual days
+                      for (let day = 1; day <= daysInMonth; day++) {
+                        const date = new Date(calendarYear, calendarMonth, day);
+                        const isSelected = selectedDate && date.toDateString() === selectedDate.toDateString();
+                        const isToday = date.toDateString() === new Date().toDateString();
+                        const dateStr = `${calendarYear}-${String(calendarMonth + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+                        const hasData = billDates.has(dateStr);
+                        const isFutureDate = date > new Date();
+
+                        days.push(
+                          <button
+                            key={day}
+                            onClick={() => {
+                              if (hasData) {
+                                setSelectedDate(date);
+                                setTimeRange('Custom');
+                                setShowDatePicker(false);
+                              }
+                            }}
+                            disabled={!hasData || isFutureDate}
+                            className={`w-8 h-8 rounded-lg text-sm font-medium transition-all ${isSelected
+                              ? 'bg-[#02575c] text-white font-bold'
+                              : isToday && hasData
+                                ? 'bg-[#5abc8b]/20 text-[#5abc8b]'
+                                : hasData
+                                  ? 'text-gray-700 hover:bg-gray-100 cursor-pointer'
+                                  : 'text-gray-300 cursor-not-allowed opacity-40'
+                              }`}
+                          >
+                            {day}
+                          </button>
+                        );
+                      }
+                      return days;
+                    })()}
+                  </div>
+
+                  {/* Quick Actions */}
+                  <div className="flex gap-2 mt-4 pt-4 border-t border-gray-100">
+                    <button
+                      onClick={() => {
+                        setSelectedDate(new Date());
+                        setTimeRange('Custom');
+                        setShowDatePicker(false);
+                      }}
+                      className="flex-1 py-2 text-xs font-bold bg-gray-50 text-gray-600 rounded-lg hover:bg-gray-100 transition-all border border-gray-100"
+                    >
+                      Today
+                    </button>
+                    <button
+                      onClick={() => {
+                        const yesterday = new Date();
+                        yesterday.setDate(yesterday.getDate() - 1);
+                        setSelectedDate(yesterday);
+                        setTimeRange('Custom');
+                        setShowDatePicker(false);
+                      }}
+                      className="flex-1 py-2 text-xs font-bold bg-gray-50 text-gray-600 rounded-lg hover:bg-gray-100 transition-all border border-gray-100"
+                    >
+                      Yesterday
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+
         <div className="flex flex-col lg:flex-row gap-8 relative z-10">
           {/* Left Side - Stats */}
-          <div className="lg:w-1/3 flex flex-col justify-between space-y-4">
+          <div className="lg:w-1/3 flex flex-col justify-start space-y-4">
             <div>
-              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#12332A]/5 border border-[#12332A]/10 text-[#12332A] text-xs font-bold mb-4">
-                <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse"></span>
-                LIVE ANALYTICS
-              </div>
-              <h2 className="text-2xl md:text-3xl font-extrabold text-[#12332A] leading-tight">
-                Sales Trends <span className="text-green-600">Overview</span>
+              <h2 className="text-2xl md:text-3xl font-extrabold text-[#02575c] leading-tight tracking-tight mb-2 whitespace-nowrap">
+                Sales Trend <span className="text-[#5abc8b]">Overview</span>
               </h2>
             </div>
 
             <div className="space-y-3">
               {/* Revenue Card */}
-              <div className="bg-gray-50 border border-gray-100 p-4 rounded-2xl flex items-center justify-between group hover:bg-[#12332A]/5 transition-all cursor-pointer">
+              <div className="bg-[#e4f595] p-3 px-4 md:p-4 md:px-5 rounded-3xl flex items-center justify-between transform transition-all hover:scale-[1.02]">
                 <div>
-                  <p className="text-gray-500 text-xs font-medium uppercase tracking-wide">Revenue</p>
-                  <p className="text-xl md:text-2xl font-bold text-[#12332A]">₹{stats.revenue.toLocaleString()}</p>
+                  <div className="flex items-center gap-1 mb-0.5 bg-[#12332A]/5 inline-flex px-1.5 py-0.5 rounded">
+                    <Banknote size={12} strokeWidth={2.5} className="text-[#02575c]" />
+                    <p className="text-[#02575c] text-[10px] font-bold uppercase tracking-wider">Revenue</p>
+                  </div>
+                  <p className="text-xl md:text-2xl font-extrabold text-[#02575c]">₹{stats.revenue.toLocaleString()}</p>
                 </div>
-                <div className="w-10 h-10 rounded-xl bg-green-100 flex items-center justify-center text-green-700">
-                  <TrendingUp size={20} />
+                <div className="w-10 h-10 md:w-12 md:h-12 rounded-[0.85rem] bg-white flex items-center justify-center text-[#02575c] shadow-sm">
+                  <TrendingUp size={20} strokeWidth={2.5} />
                 </div>
               </div>
 
               {/* SP Generated Card */}
-              <div className="bg-gray-50 border border-gray-100 p-4 rounded-2xl flex items-center justify-between group hover:bg-[#12332A]/5 transition-all cursor-pointer">
+              <div className="bg-[#5abc8b] p-3 px-4 md:p-4 md:px-5 rounded-3xl flex items-center justify-between transform transition-all hover:scale-[1.02]">
                 <div>
-                  <p className="text-gray-500 text-xs font-medium uppercase tracking-wide">SP Generated</p>
-                  <p className="text-xl md:text-2xl font-bold text-[#12332A]">{Math.round(stats.sp).toLocaleString()}</p>
+                  <div className="flex items-center gap-1 mb-0.5 bg-white/10 inline-flex px-1.5 py-0.5 rounded">
+                    <PieChart size={12} strokeWidth={2.5} className="text-white" />
+                    <p className="text-white text-[10px] font-bold uppercase tracking-wider">SP Generated</p>
+                  </div>
+                  <p className="text-xl md:text-2xl font-extrabold text-white">{Math.round(stats.sp).toLocaleString()}</p>
                 </div>
-                <div className="w-10 h-10 rounded-xl bg-purple-100 flex items-center justify-center text-purple-700">
-                  <PieChart size={20} />
+                <div className="w-10 h-10 md:w-12 md:h-12 rounded-[0.85rem] bg-white/30 flex items-center justify-center text-[#02575c]">
+                  <TrendingUp size={20} strokeWidth={2.5} />
                 </div>
               </div>
 
               {/* Total Sales Card */}
-              <div className="bg-gray-50 border border-gray-100 p-4 rounded-2xl flex items-center justify-between group hover:bg-[#12332A]/5 transition-all cursor-pointer">
+              <div className="bg-[#02575c] p-3 px-4 md:p-4 md:px-5 rounded-3xl flex items-center justify-between transform transition-all hover:scale-[1.02]">
                 <div>
-                  <p className="text-gray-500 text-xs font-medium uppercase tracking-wide">Total Sales</p>
-                  <p className="text-xl md:text-2xl font-bold text-[#12332A]">{stats.sold.toLocaleString()}</p>
+                  <div className="flex items-center gap-1 mb-0.5 bg-white/10 inline-flex px-1.5 py-0.5 rounded">
+                    <ShoppingCart size={12} strokeWidth={2.5} className="text-white" />
+                    <p className="text-white text-[10px] font-bold uppercase tracking-wider">Total Sales</p>
+                  </div>
+                  <p className="text-xl md:text-2xl font-extrabold text-white">{stats.sold.toLocaleString()}</p>
                 </div>
-                <div className="w-10 h-10 rounded-xl bg-orange-100 flex items-center justify-center text-orange-700">
-                  <ShoppingCart size={20} />
+                <div className="w-10 h-10 md:w-12 md:h-12 rounded-[0.85rem] bg-white/20 flex items-center justify-center text-white">
+                  <TrendingUp size={20} strokeWidth={2.5} />
                 </div>
               </div>
             </div>
           </div>
 
-          {/* Right Side - Chart */}
-          <div className="lg:w-2/3 relative min-h-[200px] md:min-h-[280px] flex flex-col">
-            {/* Time Period Buttons */}
-            <div className="flex flex-wrap items-center justify-start md:justify-end gap-1.5 md:gap-2 mb-4">
-              {(['Week', 'Month', 'Year'] as const).map((period) => (
-                <button
-                  key={period}
-                  onClick={() => { setTimeRange(period); setSelectedDate(null); }}
-                  className={`px-3 md:px-4 py-1 md:py-1.5 text-xs font-bold rounded-full border transition-all ${timeRange === period && !selectedDate
-                    ? 'bg-[#12332A] text-white border-[#12332A] shadow-lg shadow-[#12332A]/20'
-                    : 'bg-white text-gray-500 border-gray-200 hover:bg-gray-50 hover:border-gray-300'
-                    }`}
-                >
-                  {period}
-                </button>
-              ))}
-              <div className="hidden md:block w-px h-6 bg-gray-200 mx-1" />
-              <div className="relative">
-                <button
-                  onClick={() => setShowDatePicker(!showDatePicker)}
-                  className={`flex items-center gap-2 px-4 py-1.5 text-xs font-bold rounded-full border transition-all ${timeRange === 'Custom' && selectedDate
-                    ? 'bg-[#12332A] text-white border-[#12332A]'
-                    : 'bg-white text-[#12332A] border-gray-200 hover:bg-gray-50 hover:border-gray-300'
-                    }`}
-                >
-                  <Calendar size={14} />
-                  {selectedDate
-                    ? selectedDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
-                    : 'Select Date'
-                  }
-                </button>
-
-                {/* Date Picker Modal */}
-                {showDatePicker && (
-                  <div className="absolute top-full right-0 mt-2 z-50 bg-white border border-gray-100 rounded-2xl p-4 shadow-xl min-w-[300px]">
-                    {/* Calendar Header */}
-                    <div className="flex items-center justify-between mb-4">
-                      <button
-                        onClick={() => {
-                          if (calendarMonth === 0) {
-                            setCalendarMonth(11);
-                            setCalendarYear(calendarYear - 1);
-                          } else {
-                            setCalendarMonth(calendarMonth - 1);
-                          }
-                        }}
-                        className="w-8 h-8 rounded-lg bg-gray-50 flex items-center justify-center text-gray-600 hover:bg-gray-100 transition-all"
-                      >
-                        <ChevronLeft size={16} />
-                      </button>
-                      <span className="text-[#12332A] font-bold">
-                        {new Date(calendarYear, calendarMonth).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
-                      </span>
-                      <button
-                        onClick={() => {
-                          if (calendarMonth === 11) {
-                            setCalendarMonth(0);
-                            setCalendarYear(calendarYear + 1);
-                          } else {
-                            setCalendarMonth(calendarMonth + 1);
-                          }
-                        }}
-                        className="w-8 h-8 rounded-lg bg-gray-50 flex items-center justify-center text-gray-600 hover:bg-gray-100 transition-all"
-                      >
-                        <ChevronRight size={16} />
-                      </button>
-                    </div>
-
-                    {/* Weekday Headers */}
-                    <div className="grid grid-cols-7 gap-1 mb-2">
-                      {['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'].map(day => (
-                        <div key={day} className="text-center text-xs font-bold text-gray-400 py-1">
-                          {day}
-                        </div>
-                      ))}
-                    </div>
-
-                    {/* Calendar Days */}
-                    <div className="grid grid-cols-7 gap-1">
-                      {(() => {
-                        const firstDay = new Date(calendarYear, calendarMonth, 1).getDay();
-                        const daysInMonth = new Date(calendarYear, calendarMonth + 1, 0).getDate();
-                        const days = [];
-
-                        // Empty cells for days before month starts
-                        for (let i = 0; i < firstDay; i++) {
-                          days.push(<div key={`empty-${i}`} className="w-8 h-8" />);
-                        }
-
-                        // Actual days
-                        for (let day = 1; day <= daysInMonth; day++) {
-                          const date = new Date(calendarYear, calendarMonth, day);
-                          const isSelected = selectedDate &&
-                            date.toDateString() === selectedDate.toDateString();
-                          const isToday = date.toDateString() === new Date().toDateString();
-
-                          // Check if this date has any sales data
-                          const dateStr = `${calendarYear}-${String(calendarMonth + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-                          const hasData = billDates.has(dateStr);
-                          const isFutureDate = date > new Date();
-
-                          days.push(
-                            <button
-                              key={day}
-                              onClick={() => {
-                                if (hasData) {
-                                  setSelectedDate(date);
-                                  setTimeRange('Custom');
-                                  setShowDatePicker(false);
-                                }
-                              }}
-                              disabled={!hasData || isFutureDate}
-                              className={`w-8 h-8 rounded-lg text-sm font-medium transition-all ${isSelected
-                                ? 'bg-[#12332A] text-white font-bold'
-                                : isToday && hasData
-                                  ? 'bg-green-100 text-green-700'
-                                  : hasData
-                                    ? 'text-gray-700 hover:bg-gray-100 cursor-pointer'
-                                    : 'text-gray-300 cursor-not-allowed opacity-40'
-                                }`}
-                            >
-                              {day}
-                            </button>
-                          );
-                        }
-
-                        return days;
-                      })()}
-                    </div>
-
-                    {/* Quick Actions */}
-                    <div className="flex gap-2 mt-4 pt-4 border-t border-gray-100">
-                      <button
-                        onClick={() => {
-                          setSelectedDate(new Date());
-                          setTimeRange('Custom');
-                          setShowDatePicker(false);
-                        }}
-                        className="flex-1 py-2 text-xs font-bold bg-gray-50 text-gray-600 rounded-lg hover:bg-gray-100 transition-all border border-gray-100"
-                      >
-                        Today
-                      </button>
-                      <button
-                        onClick={() => {
-                          const yesterday = new Date();
-                          yesterday.setDate(yesterday.getDate() - 1);
-                          setSelectedDate(yesterday);
-                          setTimeRange('Custom');
-                          setShowDatePicker(false);
-                        }}
-                        className="flex-1 py-2 text-xs font-bold bg-gray-50 text-gray-600 rounded-lg hover:bg-gray-100 transition-all border border-gray-100"
-                      >
-                        Yesterday
-                      </button>
-                    </div>
-                  </div>
-                )}
-              </div>
-            </div>
-
-            {/* Chart Area */}
-            <div className="flex-1 relative rounded-xl border border-gray-100 p-2 md:p-4 overflow-hidden min-h-[200px] md:min-h-[280px]" style={{
-              backgroundImage: 'linear-gradient(to right, rgba(0,0,0,0.03) 1px, transparent 1px), linear-gradient(to bottom, rgba(0,0,0,0.03) 1px, transparent 1px)',
+          {/* Right Side - Chart (Hidden on Mobile) */}
+          <div className="hidden lg:flex lg:w-2/3 relative min-h-[350px] flex-col mt-4 lg:mt-0">
+            <div className="flex-1 relative rounded-[2rem] border border-gray-100 p-6 overflow-hidden min-h-[350px]" style={{
+              backgroundImage: 'linear-gradient(to right, rgba(2, 87, 92, 0.05) 1px, transparent 1px), linear-gradient(to bottom, rgba(2, 87, 92, 0.05) 1px, transparent 1px)',
               backgroundSize: '40px 40px'
             }}>
-              <ResponsiveContainer width="100%" height={chartHeight}>
+              <ResponsiveContainer width="100%" height={Math.max(350, chartHeight)}>
                 <AreaChart data={chartData}>
                   <defs>
                     <linearGradient id="chartGradient" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#22c55e" stopOpacity={0.2} />
-                      <stop offset="95%" stopColor="#22c55e" stopOpacity={0} />
+                      <stop offset="5%" stopColor="#5abc8b" stopOpacity={0.3} />
+                      <stop offset="95%" stopColor="#5abc8b" stopOpacity={0} />
                     </linearGradient>
                   </defs>
                   <XAxis
                     dataKey="day"
                     axisLine={false}
                     tickLine={false}
-                    tick={{ fontSize: 10, fill: '#6b7280', fontWeight: 600 }}
-                    dy={10}
+                    tick={{ fontSize: 11, fill: '#6b7280', fontWeight: 600 }}
+                    dy={12}
                     interval="preserveStartEnd"
                   />
                   <Tooltip
                     contentStyle={{
                       backgroundColor: '#fff',
-                      borderRadius: '12px',
+                      borderRadius: '16px',
                       border: '1px solid #f3f4f6',
                       boxShadow: '0 10px 30px -5px rgba(0, 0, 0, 0.1)',
                       padding: '12px'
                     }}
-                    labelStyle={{ color: '#9ca3af', fontSize: '10px', fontWeight: 700, textTransform: 'uppercase' }}
+                    labelStyle={{ color: '#9ca3af', fontSize: '11px', fontWeight: 700, textTransform: 'uppercase' }}
                     formatter={(value: any) => [`₹${value.toLocaleString()}`, '']}
                   />
                   <Area
                     type="monotone"
                     dataKey="amount"
-                    stroke="#16a34a"
-                    strokeWidth={3}
+                    stroke="#5abc8b"
+                    strokeWidth={4}
                     fillOpacity={1}
                     fill="url(#chartGradient)"
-                    activeDot={{ r: 6, strokeWidth: 0, fill: '#12332A' }}
+                    activeDot={{ r: 8, strokeWidth: 0, fill: '#02575c' }}
                   />
                 </AreaChart>
               </ResponsiveContainer>
@@ -657,9 +718,9 @@ const Dashboard: React.FC<DashboardProps> = ({ setActiveView, onEditBill, search
       <TodayOverview />
 
       {/* Recent Transaction History */}
-      <section className="bg-white rounded-3xl shadow-sm p-6 md:p-8 border border-gray-100">
+      <section className="bg-white rounded-[2rem] shadow-sm p-6 md:p-8 border border-gray-100">
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
-          <h3 className="text-xl font-bold text-[#12332A]">Recent Transaction History</h3>
+          <h3 className="text-xl font-bold text-[#02575c]">Recent Transaction History</h3>
 
           {/* Filter Tabs */}
           <div className="flex gap-1 p-1 bg-gray-100 rounded-xl">
@@ -668,8 +729,8 @@ const Dashboard: React.FC<DashboardProps> = ({ setActiveView, onEditBill, search
                 key={filter}
                 onClick={() => { setTransactionFilter(filter); setCurrentPage(1); }}
                 className={`px-4 py-2 text-sm font-bold rounded-lg transition-all ${transactionFilter === filter
-                  ? 'bg-white text-[#12332A] shadow-sm'
-                  : 'text-gray-500 hover:text-[#12332A]'
+                  ? 'bg-white text-[#02575c] shadow-sm'
+                  : 'text-gray-500 hover:text-[#02575c]'
                   }`}
               >
                 {filter}
@@ -693,7 +754,7 @@ const Dashboard: React.FC<DashboardProps> = ({ setActiveView, onEditBill, search
                       {getInitials(bill.customerName)}
                     </div>
                     <div>
-                      <p className="font-bold text-[#12332A] text-sm">{bill.customerName}</p>
+                      <p className="font-bold text-[#02575c] text-sm">{bill.customerName}</p>
                       <p className="text-xs text-gray-500">{bill.date}</p>
                     </div>
                   </div>
@@ -709,7 +770,7 @@ const Dashboard: React.FC<DashboardProps> = ({ setActiveView, onEditBill, search
                     <p className="text-xs text-gray-500">Invoice #{bill.id}</p>
                   </div>
                   <div className="text-right">
-                    <p className="font-bold text-[#12332A]">₹{bill.totalAmount.toLocaleString()}</p>
+                    <p className="font-bold text-[#02575c]">₹{bill.totalAmount.toLocaleString()}</p>
                     <p className="text-xs text-gray-500">SP: {Math.round(bill.totalSp)}</p>
                   </div>
                 </div>
@@ -743,18 +804,18 @@ const Dashboard: React.FC<DashboardProps> = ({ setActiveView, onEditBill, search
                     onClick={() => setSelectedBill(bill)}
                     className="group hover:bg-gray-50 transition-colors cursor-pointer border-b border-gray-50"
                   >
-                    <td className="py-4 pl-4 font-mono text-[#12332A] font-bold">{bill.id}</td>
+                    <td className="py-4 pl-4 font-mono text-[#02575c] font-bold">{bill.id}</td>
                     <td className="py-4">
                       <div className="flex items-center gap-3">
                         <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold shrink-0 ${getAvatarColor(bill.customerName)}`}>
                           {getInitials(bill.customerName)}
                         </div>
-                        <span className="font-bold text-[#12332A] truncate">{bill.customerName}</span>
+                        <span className="font-bold text-[#02575c] truncate">{bill.customerName}</span>
                       </div>
                     </td>
                     <td className="py-4 text-gray-500">{bill.date}</td>
-                    <td className="py-4 font-extrabold text-[#12332A]">₹{bill.totalAmount.toLocaleString()}</td>
-                    <td className="py-4 font-bold text-[#12332A]">{Math.round(bill.totalSp).toLocaleString()}</td>
+                    <td className="py-4 font-extrabold text-[#02575c]">₹{bill.totalAmount.toLocaleString()}</td>
+                    <td className="py-4 font-bold text-[#02575c]">{Math.round(bill.totalSp).toLocaleString()}</td>
                     <td className="py-4 text-right pr-4">
                       <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-bold border ${bill.isPaid
                         ? 'bg-green-100 text-green-800 border-green-200'
@@ -785,6 +846,101 @@ const Dashboard: React.FC<DashboardProps> = ({ setActiveView, onEditBill, search
           </div>
         )}
       </section>
+
+      {/* Pending Products — Reorder Priority */}
+      {pendingProducts.length > 0 && (
+        <section className="bg-white rounded-[2rem] shadow-sm p-6 md:p-8 border border-gray-100 mt-8">
+          <div className="flex items-center gap-3 mb-5">
+            <div className="w-10 h-10 rounded-xl bg-amber-50 flex items-center justify-center text-amber-600">
+              <Package size={20} strokeWidth={2.5} />
+            </div>
+            <div>
+              <h3 className="text-lg font-bold text-[#02575c]">Pending Products</h3>
+              <p className="text-xs text-gray-400 font-medium">{pendingProducts.length} product{pendingProducts.length !== 1 ? 's' : ''} need reordering</p>
+            </div>
+          </div>
+
+          {/* Summary Stats Bar */}
+          <div className="flex items-center gap-3 mb-5 overflow-x-auto pb-1" style={{ scrollbarWidth: 'none' }}>
+            {(['High', 'Medium', 'Low'] as const).map(level => {
+              const count = pendingProducts.filter(p => p.priority === level).length;
+              if (count === 0) return null;
+              const colors = {
+                High: 'bg-red-50 text-red-700 border-red-100',
+                Medium: 'bg-amber-50 text-amber-700 border-amber-100',
+                Low: 'bg-blue-50 text-blue-700 border-blue-100',
+              };
+              return (
+                <span key={level} className={`px-3 py-1.5 rounded-full text-xs font-bold border whitespace-nowrap ${colors[level]}`}>
+                  {count} {level} Priority
+                </span>
+              );
+            })}
+            <span className="px-3 py-1.5 rounded-full text-xs font-bold bg-gray-50 text-gray-600 border border-gray-100 whitespace-nowrap">
+              Total: ₹{pendingProducts.reduce((s, p) => s + p.totalValue, 0).toLocaleString('en-IN')}
+            </span>
+          </div>
+
+          {/* Product List — Fixed height, scrollable */}
+          <div className="max-h-[400px] overflow-y-auto space-y-2.5 pr-1 custom-scrollbar">
+            {pendingProducts.map((p, idx) => {
+              const priorityStyles = {
+                High: { bg: 'bg-red-50', text: 'text-red-700', dot: 'bg-red-500' },
+                Medium: { bg: 'bg-amber-50', text: 'text-amber-700', dot: 'bg-amber-500' },
+                Low: { bg: 'bg-blue-50', text: 'text-blue-700', dot: 'bg-blue-400' },
+              }[p.priority];
+
+              return (
+                <div
+                  key={p.productId}
+                  className="flex items-center gap-3 px-4 py-3.5 rounded-2xl bg-gray-50/70 hover:bg-gray-100/80 transition-all group"
+                >
+                  {/* Rank */}
+                  <span className="text-xs font-bold text-gray-300 w-5 text-center shrink-0">
+                    {idx + 1}
+                  </span>
+
+                  {/* Priority Dot */}
+                  <div className={`w-2.5 h-2.5 rounded-full shrink-0 ${priorityStyles.dot}`} />
+
+                  {/* Product Info */}
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-bold text-[#02575c] truncate">{p.name}</p>
+                    <p className="text-xs text-gray-400 font-medium">
+                      ₹{p.price.toLocaleString('en-IN')} × {p.totalPendingQty} pending
+                      {p.billCount > 1 ? ` · ${p.billCount} bills` : ''}
+                    </p>
+                  </div>
+
+                  {/* Qty Badge */}
+                  <div className="flex items-center gap-2 shrink-0">
+                    <div className="bg-white border border-gray-200 rounded-lg px-2.5 py-1 text-center">
+                      <p className="text-sm font-extrabold text-[#02575c]">{p.totalPendingQty}</p>
+                      <p className="text-[9px] text-gray-400 font-bold uppercase -mt-0.5">Qty</p>
+                    </div>
+
+                    {/* Value */}
+                    <div className="text-right">
+                      <p className="text-sm font-extrabold text-[#02575c]">₹{p.totalValue.toLocaleString('en-IN')}</p>
+                      <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${priorityStyles.bg} ${priorityStyles.text}`}>
+                        {p.priority}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Footer note */}
+          <div className="mt-4 pt-3 border-t border-gray-100 flex items-center gap-2">
+            <AlertTriangle size={14} className="text-amber-400 shrink-0" />
+            <p className="text-xs text-gray-400 font-medium">
+              Priority is based on total pending value (price × quantity). Consider reordering high-priority items first.
+            </p>
+          </div>
+        </section>
+      )}
 
       {/* Bill Detail Modal */}
       <BillDetailModal bill={selectedBill} onClose={() => setSelectedBill(null)} onEdit={onEditBill} />

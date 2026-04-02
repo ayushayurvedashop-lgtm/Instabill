@@ -1283,9 +1283,9 @@ export const InvoiceModal = forwardRef<InvoiceModalHandle, InvoiceModalProps>(({
 
                 {/* Success Banner */}
                 <div className="bg-green-500 text-white px-6 py-3 flex items-center justify-center gap-2 font-bold text-sm md:text-base shadow-sm overflow-hidden relative no-print">
-                    <div className="absolute inset-0 bg-green-600/20" style={{ animation: 'shimmer 1.5s infinite' }}></div>
+                    <div className="absolute inset-0 bg-[#5abc8b]/20" style={{ animation: 'shimmer 1.5s infinite' }}></div>
                     <div className="flex items-center justify-center bg-white rounded-full p-0.5" style={{ animation: 'checkmark-pop 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards' }}>
-                        <CheckCircle size={20} className="text-green-600" />
+                        <CheckCircle size={20} className="text-[#5abc8b]" />
                     </div>
                     <span className="relative z-10">Success! Bill Generated Successfully</span>
                     <style>{`

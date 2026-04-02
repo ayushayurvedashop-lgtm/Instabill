@@ -3,6 +3,7 @@ import { X, Camera, Upload, Loader2, Check, AlertCircle, RefreshCw } from 'lucid
 
 import { DetectedProduct, Product } from '../types';
 import { store } from '../store';
+import { analyzeReceipt } from '../services/geminiService';
 
 interface ReceiptScanModalProps {
     onClose: () => void;
@@ -74,9 +75,7 @@ export const ReceiptScanModal: React.FC<ReceiptScanModalProps> = ({ onClose, pro
             });
 
             const productNames = products.map(p => p.name);
-            // const detected = await analyzeReceipt(base64, productNames);
-            const detected: any[] = [];
-            throw new Error("AI Service Removed");
+            const detected = await analyzeReceipt(base64, productNames);
 
             if (detected.length === 0) {
                 setError('No products detected in the receipt. Please try another image.');
@@ -341,7 +340,7 @@ export const ReceiptScanModal: React.FC<ReceiptScanModalProps> = ({ onClose, pro
                                                     <div className="flex-1 min-w-0">
                                                         <p className="font-bold text-dark text-sm">{item.name}</p>
                                                         {item.matchedProduct ? (
-                                                            <p className="text-xs text-green-600 font-medium">
+                                                            <p className="text-xs text-[#5abc8b] font-medium">
                                                                 ✓ Matched: {item.matchedProduct.name}
                                                             </p>
                                                         ) : (

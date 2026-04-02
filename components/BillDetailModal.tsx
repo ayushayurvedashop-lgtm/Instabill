@@ -251,7 +251,7 @@ const BillDetailModal: React.FC<BillDetailModalProps> = ({ bill, onClose, onEdit
                                     ) : (
                                         <button
                                             onClick={() => setViewMode('update')}
-                                            className="text-sm text-gray-500 mt-4 leading-relaxed flex items-center gap-1 hover:text-[#111617] font-medium"
+                                            className="text-sm text-gray-500 mt-4 leading-relaxed flex items-center gap-1 hover:text-[#02575c] font-medium"
                                         >
                                             <ChevronLeft size={16} /> Back to Update
                                         </button>
@@ -466,11 +466,11 @@ const BillDetailModal: React.FC<BillDetailModalProps> = ({ bill, onClose, onEdit
                                     <button
                                         onClick={handleUpdateSP}
                                         disabled={isUpdating || updateSpAmount <= 0}
-                                        className="w-full relative group bg-[#88de7d] hover:bg-[#7cd472] text-[#111617] font-bold py-4 px-6 rounded-2xl shadow-lg shadow-[#88de7d]/30 hover:shadow-[#88de7d]/50 transition-all duration-300 transform hover:-translate-y-0.5 flex items-center justify-center gap-2 overflow-hidden disabled:opacity-50 disabled:cursor-not-allowed"
+                                        className="w-full relative group bg-[#88de7d] hover:bg-[#7cd472] text-[#02575c] font-bold py-4 px-6 rounded-2xl shadow-lg shadow-[#88de7d]/30 hover:shadow-[#88de7d]/50 transition-all duration-300 transform hover:-translate-y-0.5 flex items-center justify-center gap-2 overflow-hidden disabled:opacity-50 disabled:cursor-not-allowed"
                                     >
                                         <span className="relative z-10 flex items-center gap-2">
                                             {isUpdating ? 'Updating...' : 'Confirm Update'}
-                                            {!isUpdating && <span className="bg-[#111617]/10 px-2 py-0.5 rounded text-sm font-medium">{formatSp(updateSpAmount)} SP</span>}
+                                            {!isUpdating && <span className="bg-[#02575c]/10 px-2 py-0.5 rounded text-sm font-medium">{formatSp(updateSpAmount)} SP</span>}
                                         </span>
                                         {!isUpdating && <ArrowRight size={20} className="relative z-10 group-hover:translate-x-1 transition-transform" />}
 
@@ -487,10 +487,10 @@ const BillDetailModal: React.FC<BillDetailModalProps> = ({ bill, onClose, onEdit
                             <div className="shrink-0 bg-white z-10 p-5 md:p-6 border-b border-gray-100 shadow-sm animate-fade-in-down">
                                 <div className="flex items-start justify-between">
                                     <div className="pr-8">
-                                        <h2 className="text-xl font-black text-[#111617] mb-0.5 whitespace-nowrap truncate max-w-[200px] md:max-w-[300px]">{bill.customerName}</h2>
+                                        <h2 className="text-xl font-black text-[#02575c] mb-0.5 whitespace-nowrap truncate max-w-[200px] md:max-w-[300px]">{bill.customerName}</h2>
                                         <p className="text-xs text-gray-400 font-semibold">{bill.id} • {bill.date}</p>
                                     </div>
-                                    <div className={`px-3 py-1.5 rounded-xl text-xs font-bold shrink-0 mr-12 ${bill.isPaid ? 'bg-[#daf4d7] text-[#111617]' : 'bg-red-50 text-red-600'}`}>
+                                    <div className={`px-3 py-1.5 rounded-xl text-xs font-bold shrink-0 mr-12 ${bill.isPaid ? 'bg-[#daf4d7] text-[#02575c]' : 'bg-red-50 text-red-600'}`}>
                                         {bill.isPaid ? 'Paid' : 'Unpaid'}
                                     </div>
                                 </div>
@@ -499,13 +499,13 @@ const BillDetailModal: React.FC<BillDetailModalProps> = ({ bill, onClose, onEdit
                                 <div className="flex items-center gap-2 mt-5 w-full">
                                     <button
                                         onClick={() => setShowInvoiceModal(true)}
-                                        className="flex-1 py-2.5 bg-[#88de7d] hover:bg-[#7cd472] text-[#111617] font-bold rounded-xl transition-all flex items-center justify-center gap-2 shadow-sm shadow-[#88de7d]/30 hover:shadow-md hover:shadow-[#88de7d]/40 active:scale-95 group"
+                                        className="flex-1 py-2.5 bg-[#88de7d] hover:bg-[#7cd472] text-[#02575c] font-bold rounded-xl transition-all flex items-center justify-center gap-2 shadow-sm shadow-[#88de7d]/30 hover:shadow-md hover:shadow-[#88de7d]/40 active:scale-95 group"
                                     >
                                         <Printer size={16} className="group-hover:scale-110 transition-transform" /> Print
                                     </button>
                                     <button
                                         onClick={() => setShowPaymentManager(true)}
-                                        className="p-2.5 bg-gray-50 hover:bg-[#daf4d7] hover:text-[#111617] text-gray-500 rounded-xl transition-all border border-gray-100 flex items-center justify-center relative group active:scale-95"
+                                        className="p-2.5 bg-gray-50 hover:bg-[#daf4d7] hover:text-[#02575c] text-gray-500 rounded-xl transition-all border border-gray-100 flex items-center justify-center relative group active:scale-95"
                                         title="Manage Payment"
                                     >
                                         {!bill.isPaid && <span className="absolute -top-1 -right-1 flex h-3 w-3"><span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span><span className="relative inline-flex rounded-full h-3 w-3 bg-red-500 border border-white"></span></span>}
@@ -513,7 +513,7 @@ const BillDetailModal: React.FC<BillDetailModalProps> = ({ bill, onClose, onEdit
                                     </button>
                                     {onEdit && (
                                         <>
-                                            <button onClick={() => { onEdit(bill); onClose(); }} className="p-2.5 bg-gray-50 hover:bg-[#daf4d7] hover:text-[#111617] text-gray-500 rounded-xl transition-all border border-gray-100 flex items-center justify-center active:scale-95 group">
+                                            <button onClick={() => { onEdit(bill); onClose(); }} className="p-2.5 bg-gray-50 hover:bg-[#daf4d7] hover:text-[#02575c] text-gray-500 rounded-xl transition-all border border-gray-100 flex items-center justify-center active:scale-95 group">
                                                 <Edit size={18} className="group-hover:scale-110 transition-transform" />
                                             </button>
                                             <button onClick={async () => { if (confirm("Delete this bill?")) { await store.deleteBill(bill.id); onClose(); } }} className="p-2.5 bg-gray-50 hover:bg-red-50 text-gray-400 hover:text-red-500 rounded-xl transition-all border border-gray-100 flex items-center justify-center active:scale-95 group">
@@ -580,7 +580,7 @@ const BillDetailModal: React.FC<BillDetailModalProps> = ({ bill, onClose, onEdit
                             <div className="shrink-0 p-4 md:p-5 border-t border-gray-100 bg-white grid grid-cols-2 gap-3 animate-fade-in-up">
                                 <button
                                     onClick={() => setShowProductHandover(true)}
-                                    className="py-3 px-2 bg-slate-50 hover:bg-[#111617] text-slate-700 hover:text-[#88de7d] font-bold rounded-xl transition-colors border border-slate-100 hover:border-[#111617] flex flex-col items-center justify-center gap-1 shadow-sm active:scale-95 group"
+                                    className="py-3 px-2 bg-slate-50 hover:bg-[#02575c] text-slate-700 hover:text-[#88de7d] font-bold rounded-xl transition-colors border border-slate-100 hover:border-[#02575c] flex flex-col items-center justify-center gap-1 shadow-sm active:scale-95 group"
                                 >
                                     <Package size={18} className="group-hover:-translate-y-0.5 transition-transform" />
                                     <span className="text-[10px] uppercase tracking-wider">Manage Products</span>
@@ -588,7 +588,7 @@ const BillDetailModal: React.FC<BillDetailModalProps> = ({ bill, onClose, onEdit
 
                                 <button
                                     onClick={() => setViewMode('update')}
-                                    className="py-3 px-2 bg-slate-50 hover:bg-[#111617] text-slate-700 hover:text-[#88de7d] font-bold rounded-xl transition-colors border border-slate-100 hover:border-[#111617] flex flex-col items-center justify-center gap-1 shadow-sm active:scale-95 group relative"
+                                    className="py-3 px-2 bg-slate-50 hover:bg-[#02575c] text-slate-700 hover:text-[#88de7d] font-bold rounded-xl transition-colors border border-slate-100 hover:border-[#02575c] flex flex-col items-center justify-center gap-1 shadow-sm active:scale-95 group relative"
                                     title="Manage Service Points"
                                 >
                                     {isSpPending && <div className="absolute top-2 right-4 w-2 h-2 rounded-full bg-orange-400 animate-pulse border border-white"></div>}

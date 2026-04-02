@@ -72,7 +72,7 @@ const ProductCompleted: React.FC<ProductCompletedProps> = ({ bills, searchTerm }
                                     </p>
                                 </div>
                                 <div className="text-right shrink-0 mt-0.5">
-                                    <span className="inline-flex flex-row items-center gap-1 px-2.5 py-1 rounded-full bg-green-50 text-green-700 text-[11px] font-bold border border-green-100/50">
+                                    <span className="inline-flex flex-row items-center gap-1 px-2.5 py-1 rounded-full bg-green-50 text-[#5abc8b] text-[11px] font-bold border border-green-100/50">
                                         <CheckCircle2 size={11} strokeWidth={2.5} />
                                         Completed
                                     </span>
@@ -105,7 +105,7 @@ const ProductCompleted: React.FC<ProductCompletedProps> = ({ bills, searchTerm }
                             {/* Client Details */}
                             <div className="col-span-4">
                                 <div className="flex items-center gap-3">
-                                    <div className="w-10 h-10 rounded-full bg-green-50 text-green-600 flex items-center justify-center font-bold text-sm shrink-0">
+                                    <div className="w-10 h-10 rounded-full bg-green-50 text-[#5abc8b] flex items-center justify-center font-bold text-sm shrink-0">
                                         {bill.customerName.charAt(0)}
                                     </div>
                                     <div>
@@ -127,7 +127,7 @@ const ProductCompleted: React.FC<ProductCompletedProps> = ({ bills, searchTerm }
                                     <div className="flex-1 h-2 bg-green-100 rounded-full overflow-hidden">
                                         <div className="h-full bg-green-500 w-full" />
                                     </div>
-                                    <span className="text-xs font-bold text-green-700 whitespace-nowrap">100% Done</span>
+                                    <span className="text-xs font-bold text-[#5abc8b] whitespace-nowrap">100% Done</span>
                                 </div>
                                 <div className="mt-1 text-[10px] text-gray-400">
                                     All {totalQty} items delivered successfully
